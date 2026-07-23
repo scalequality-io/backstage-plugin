@@ -1,10 +1,19 @@
 {
   "name": "@scalequality/backstage-plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Render ScaleQuality's measured quality signals (AI durability, engineering maturity, code maturity, tech radar) as entity cards in Backstage.",
-  "keywords": ["backstage", "backstage-plugin", "scalequality", "code-quality", "ai"],
+  "keywords": [
+    "backstage",
+    "backstage-plugin",
+    "scalequality",
+    "code-quality",
+    "ai"
+  ],
   "homepage": "https://scalequality.io",
-  "repository": { "type": "git", "url": "https://github.com/scalequality-io/backstage-plugin" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scalequality-io/backstage-plugin"
+  },
   "license": "Apache-2.0",
   "backstage": {
     "role": "frontend-plugin",
@@ -20,6 +29,7 @@
     "types": "dist/index.d.ts"
   },
   "scripts": {
+    "start": "backstage-cli package start",
     "build": "backstage-cli package build",
     "lint": "backstage-cli package lint",
     "tsc": "tsc --noEmit",
@@ -30,19 +40,24 @@
     "@backstage/core-plugin-api": "^1.12.0",
     "@backstage/plugin-catalog-react": "^3.2.0",
     "@backstage/theme": "^0.7.0",
-    "@material-ui/core": "^4.9.3",
     "react-use": "^17.5.1"
   },
   "peerDependencies": {
+    "@material-ui/core": "^4.9.3",
     "react": "^17.0.0 || ^18.0.0",
     "react-dom": "^17.0.0 || ^18.0.0"
   },
   "devDependencies": {
     "@backstage/cli": "^0.36.0",
+    "@backstage/test-utils": "^1.7.0",
+    "@material-ui/core": "^4.9.3",
     "@types/react": "^18.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0",
     "typescript": "~5.4.5"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

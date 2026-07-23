@@ -1,0 +1,14 @@
+# Minimal config for the standalone `yarn start` dev harness (dev/index.tsx).
+# Not published to npm (only `dist` ships) and never used by consumers.
+app:
+  title: ScaleQuality plugin dev
+  baseUrl: http://localhost:3000
+  support:
+    url: https://scalequality.io
+    items: []
+organization:
+  name: ScaleQuality
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    port: 7007
