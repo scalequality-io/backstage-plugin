@@ -1,6 +1,6 @@
 {
   "name": "@scalequality/backstage-plugin",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Render ScaleQuality's measured quality signals (AI durability, engineering maturity, code maturity, tech radar) as entity cards in Backstage.",
   "keywords": [
     "backstage",

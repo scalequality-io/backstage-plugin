@@ -9,6 +9,15 @@ The card reads ScaleQuality's public read-only `/v1` API through the Backstage b
 **proxy**, so your org-scoped API key (`sq_live_...`) is injected server-side and never
 reaches the browser.
 
+## The card
+
+The entity card renders theme-aware from real measured signals, so it stays clean in
+both Backstage themes.
+
+![ScaleQuality entity card in the Backstage light theme](https://raw.githubusercontent.com/scalequality-io/backstage-plugin/main/assets/card-light.png)
+
+![ScaleQuality entity card in the Backstage dark theme](https://raw.githubusercontent.com/scalequality-io/backstage-plugin/main/assets/card-dark.png)
+
 ## Install
 
 ```bash
