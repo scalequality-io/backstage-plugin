@@ -175,7 +175,7 @@ export function CodeMaturityBody({ s, t }: { s: EntitySignal; t: Tokens }) {
   const score = typeof s.value === 'number' ? s.value : null;
   const dom = s.data?.domains ?? {};
   const dash = score != null ? (score / 100) * 295.3 : 0;
-  const rows: Array<[string, string]> = [['Security', 'security'], ['Reliability', 'reliability'], ['Maintainability', 'maintainability'], ['AI durability', 'aiDurability']];
+  const rows: Array<[string, string]> = [['Security', 'security'], ['Supply chain', 'supplyChain'], ['Reliability', 'reliability'], ['Maintainability', 'maintainability'], ['AI durability', 'aiDurability']];
   return (
     <>
       <div style={{ font: '600 13px system-ui', color: t.text, marginBottom: 4 }}>Code maturity</div>
