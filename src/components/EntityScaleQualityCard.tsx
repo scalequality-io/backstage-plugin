@@ -77,12 +77,12 @@ export function EntityScaleQualityCard() {
     api.getCompliance(resolved.scope, resolved.id, regime).then(setCompliance).catch(() => undefined);
   };
   // Each widget only when the entity is read for it and the key carries it.
-  const cards: Array<{ key: string; title: string; signal?: EntitySignal; span: number; body: React.ReactNode }> = [
+  const cards: Array<{ key: string; title: string; signal?: EntitySignal; span: number; fill?: boolean; body: React.ReactNode }> = [
     { key: 'health', title: 'Health', signal: s.health, span: wide, body: <HealthBody s={s.health} t={t} /> },
     { key: 'security', title: 'Security', signal: s.security, span: 1, body: <SecurityBody s={s.security} t={t} /> },
     { key: 'compliance', title: 'Compliance', signal: compliance ?? s.compliance, span: wide, body: <ComplianceBody s={compliance ?? s.compliance} t={t} onRegime={switchRegime} /> },
     { key: 'licenses', title: 'Licenses', signal: s.licenses, span: 1, body: <LicensesBody s={s.licenses} t={t} /> },
-    { key: 'coverage', title: 'Test coverage', signal: s.coverage, span: 1, body: <CoverageBody s={s.coverage} t={t} /> },
+    { key: 'coverage', title: 'Test coverage', signal: s.coverage, span: 1, fill: true, body: <CoverageBody s={s.coverage} t={t} /> },
     { key: 'engMaturity', title: 'Engineering maturity', signal: s.engMaturity, span: 1, body: <EngMaturityBody s={s.engMaturity} t={t} /> },
     { key: 'ai', title: 'AI', signal: s.ai, span: 1, body: <AiBody s={s.ai} t={t} /> },
     { key: 'peopleCost', title: 'People and cost', signal: s.peopleCost, span: 1, body: <PeopleCostBody s={s.peopleCost} t={t} /> },
@@ -93,7 +93,7 @@ export function EntityScaleQualityCard() {
 
   return (
     <div ref={ref} style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: 14 }}>
-      {cards.map(c => <Panel key={c.key} title={c.title} signal={c.signal} t={t} span={c.span}>{c.body}</Panel>)}
+      {cards.map(c => <Panel key={c.key} title={c.title} signal={c.signal} t={t} span={c.span} fill={c.fill}>{c.body}</Panel>)}
     </div>
   );
 }

@@ -43,8 +43,8 @@ function BrandMark() {
   );
 }
 
-export function Panel(props: { title: string; signal?: EntitySignal; t: Tokens; span?: number; children: React.ReactNode }) {
-  const { title, signal, t, span = 1, children } = props;
+export function Panel(props: { title: string; signal?: EntitySignal; t: Tokens; span?: number; fill?: boolean; children: React.ReactNode }) {
+  const { title, signal, t, span = 1, fill, children } = props;
   const p = signal?.provenance;
   const chip = p === 'MEASURED' ? { bg: t.g50, fg: t.g900 } : p === 'DECLARED' ? { bg: t.amberBg, fg: t.amber } : { bg: 'rgba(47,111,184,0.12)', fg: t.blue };
   return (
@@ -54,7 +54,7 @@ export function Panel(props: { title: string; signal?: EntitySignal; t: Tokens; 
         <span style={{ fontSize: 12, color: t.muted }}>ScaleQuality · <b style={{ color: t.fg, fontWeight: 600 }}>{title}</b></span>
         {p && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', padding: '2px 7px', borderRadius: 999, background: chip.bg, color: chip.fg }}>{p}</span>}
       </div>
-      <div style={{ padding: '12px 14px 14px', flex: 1, display: 'grid', gap: 12, alignContent: 'start' }}>{children}</div>
+      <div style={{ padding: '12px 14px 14px', flex: 1, display: 'grid', gap: 12, alignContent: fill ? 'stretch' : 'start' }}>{children}</div>
       {signal?.deepLinkUrl && (
         <a href={signal.deepLinkUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '9px 14px', borderTop: `1px solid ${t.border}`, fontSize: 11.5, color: t.g700, textDecoration: 'none', fontWeight: 500 }}>
           Open in ScaleQuality ↗
@@ -92,9 +92,9 @@ const Alert = ({ t, good, children }: { t: Tokens; good?: boolean; children: Rea
 const Tri = ({ t, items }: { t: Tokens; items: Array<{ label: string; value: React.ReactNode }> }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
     {items.map(i => (
-      <div key={i.label} style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 12px', background: t.soft, display: 'grid', gap: 4, minWidth: 0 }}>
+      <div key={i.label} style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: 10, background: t.soft, display: 'grid', gap: 4, alignContent: 'space-between', minWidth: 0, containerType: 'inline-size' }}>
         <span style={{ fontSize: 11, color: t.muted }}>{i.label}</span>
-        <span style={{ ...num, fontSize: 20, fontWeight: 650 }}>{i.value}</span>
+        <span style={{ ...num, fontSize: 'clamp(13px, 17cqw, 20px)', fontWeight: 650, whiteSpace: 'nowrap' }}>{i.value}</span>
       </div>
     ))}
   </div>
@@ -124,23 +124,6 @@ function Donut({ parts, colors, size, stroke, t }: { parts: number[]; colors: st
     </svg>
   );
 }
-function Spark({ values, w, h, color }: { values: number[]; w: number; h: number; color: string }) {
-  const id = useUid();
-  if (values.length < 2) return null;
-  const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
-  const pts = values.map((v, i) => [i * (w / (values.length - 1)), h - 3 - ((v - min) / span) * (h - 6)]);
-  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
-  const last = pts[pts.length - 1];
-  return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ maxWidth: w, height: h }} aria-hidden>
-      <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".28" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
-      <path d={`${d} L${w} ${h} L0 ${h} Z`} fill={`url(#${id})`} />
-      <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      <circle cx={last[0]} cy={last[1]} r="2.6" fill={color} />
-    </svg>
-  );
-}
-
 // ─── Health ──────────────────────────────────────────────────
 const LEVEL_NAMES = ['', 'Reactive', 'Initial', 'Structured', 'Managed', 'Optimized'];
 const DOMAINS: Array<[string, string]> = [['security', 'Security'], ['reliability', 'Reliability'], ['maintainability', 'Maintainability'], ['aiDurability', 'AI durability'], ['supplyChain', 'Supply chain']];
@@ -262,21 +245,51 @@ export function LicensesBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
 
 // ─── Coverage ────────────────────────────────────────────────
 export function CoverageBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const id = useUid();
   const d = s?.data ?? {};
   if (d.pct == null) return <Empty t={t}>No coverage measured here yet.</Empty>;
   const history: Array<{ date: string; pct: number }> = d.history ?? [];
   const delta = history.length > 1 ? Math.round(history[history.length - 1].pct - history[0].pct) : null;
+  const day = (date: string) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const values = history.map(p => p.pct);
+  const lo = values.length ? Math.max(0, Math.floor((Math.min(...values) - 5) / 10) * 10) : 0;
+  const hi = values.length ? Math.min(100, Math.ceil((Math.max(...values) + 5) / 10) * 10) : 100;
+  const t0 = history.length ? new Date(history[0].date).getTime() : 0, t1 = history.length ? new Date(history[history.length - 1].date).getTime() : 0;
+  const x = (date: string) => (t1 === t0 ? 50 : ((new Date(date).getTime() - t0) / (t1 - t0)) * 100);
+  const y = (v: number) => 100 - ((v - lo) / (hi - lo || 1)) * 100;
+  const path = history.map((p, i) => `${i ? 'L' : 'M'}${x(p.date).toFixed(2)} ${y(p.pct).toFixed(2)}`).join(' ');
+  const last = history[history.length - 1];
+  const small: React.CSSProperties = { ...num, fontSize: 10.5, color: t.faint };
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-      <div style={{ position: 'relative', width: 96, height: 96, flex: 'none' }}>
-        <Ring value={d.pct} size={96} stroke={10} t={t} />
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', ...num, fontSize: 20, fontWeight: 650 }}>{d.pct}%</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: 124, height: 124, flex: 'none' }}>
+          <Ring value={d.pct} size={124} stroke={12} t={t} />
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', ...num, fontSize: 28, fontWeight: 650, letterSpacing: '-0.02em' }}>{d.pct}%</div>
+        </div>
+        <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+          <span style={{ fontSize: 12, color: t.muted }}>Executed lines, last {history.length} measurements</span>
+          {delta != null && <span style={{ fontSize: 12, color: t.muted }}><Delta t={t} v={delta} suffix=" pp" /> since {day(history[0].date)}</span>}
+        </div>
       </div>
-      <div style={{ display: 'grid', gap: 4, minWidth: 0, flex: 1 }}>
-        <span style={{ fontSize: 12, color: t.muted }}>Executed lines, last {history.length} measurements</span>
-        <Spark values={history.map(p => p.pct)} w={200} h={56} color={t.g500} />
-        {delta != null && <span style={{ fontSize: 12, color: t.muted }}><Delta t={t} v={delta} suffix=" pp" /> since {new Date(history[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>}
-      </div>
+      {history.length > 1 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr) auto', gap: '6px 8px', flex: 1, minHeight: 150 }} aria-hidden>
+          <div style={{ ...small, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'right' }}>
+            <span>{hi}%</span><span>{Math.round((hi + lo) / 2)}%</span><span>{lo}%</span>
+          </div>
+          <div style={{ position: 'relative', minHeight: 0 }}>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
+              <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={t.g500} stopOpacity=".28" /><stop offset="1" stopColor={t.g500} stopOpacity="0" /></linearGradient></defs>
+              {[0, 50, 100].map(gy => <line key={gy} x1="0" x2="100" y1={gy} y2={gy} stroke={t.grid} vectorEffect="non-scaling-stroke" />)}
+              <path d={`${path} L${x(last.date).toFixed(2)} 100 L${x(history[0].date).toFixed(2)} 100 Z`} fill={`url(#${id})`} />
+              <path d={path} fill="none" stroke={t.g500} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+            </svg>
+            <span style={{ position: 'absolute', left: `${x(last.date)}%`, top: `${y(last.pct)}%`, width: 9, height: 9, borderRadius: '50%', background: t.g500, boxShadow: `0 0 0 2px ${t.card}`, transform: 'translate(-50%, -50%)' }} />
+          </div>
+          <span />
+          <div style={{ ...small, display: 'flex', justifyContent: 'space-between' }}><span>{day(history[0].date)}</span><span>{day(last.date)}</span></div>
+        </div>
+      )}
     </div>
   );
 }
@@ -291,6 +304,13 @@ const ENG = [
   { code: '01', label: 'Unit tests', match: (n: string) => n.includes('unit test') },
 ];
 const normCode = (v: unknown) => String(v ?? '').replace(/^0+/, '').toLowerCase();
+/** A long axis name breaks in two at the space nearest its middle, so the side labels stay narrow. */
+function nameLines(name: string): string[] {
+  if (name.length <= 11 || !name.includes(' ')) return [name];
+  const spaces = [...name].map((c, i) => (c === ' ' ? i : -1)).filter(i => i > 0);
+  const cut = spaces.reduce((best, i) => (Math.abs(i - name.length / 2) < Math.abs(best - name.length / 2) ? i : best), spaces[0]);
+  return [name.slice(0, cut), name.slice(cut + 1)];
+}
 export function EngMaturityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const d = s?.data ?? {};
   if (d.level == null || !(d.teamsAssessed > 0)) return <Empty t={t}>No team assessed yet.</Empty>;
@@ -298,22 +318,30 @@ export function EngMaturityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const axes = ENG.map(dom => {
     const hit = radar.find(r => normCode(r.domainCode) === normCode(dom.code) || dom.match(String(r.domainName ?? '').toLowerCase()));
     const score = hit && hit.answer !== 'NA' ? Number(hit.score) : null;
-    return { label: `${dom.label} · ${score == null ? '–' : score.toFixed(1)}`, value: score == null ? 0 : score / 2 };
+    return { name: dom.label, reading: score == null ? '–' : score.toFixed(1), value: score == null ? 0 : score / 2 };
   });
-  const size = 300, cx = size / 2, cy = size / 2, R = size / 2 - 40;
+  const cx = 150, cy = 150, R = 112, LINE = 14.5;
   const at = (j: number, k: number) => { const a = -Math.PI / 2 + (j * 2 * Math.PI) / axes.length; return [cx + Math.cos(a) * R * k, cy + Math.sin(a) * R * k]; };
   const pts = axes.map((a, j) => at(j, Math.max(0.04, Math.min(1, a.value))));
   return (
     <>
       <Kpi t={t} value={`L${d.level}`} unit="of 5 · from the latest assessment of each team" />
-      <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size }} aria-hidden>
-        {[1, 2, 3, 4, 5].map(k => <polygon key={k} points={axes.map((_, j) => at(j, k / 5).map(x => x.toFixed(1)).join(',')).join(' ')} fill={k % 2 ? 'none' : t.soft} stroke={t.grid} />)}
-        {axes.map((_, j) => { const [x, y] = at(j, 1); return <line key={j} x1={cx} y1={cy} x2={x} y2={y} stroke={t.grid} />; })}
-        <polygon points={pts.map(p => p.map(x => x.toFixed(1)).join(',')).join(' ')} fill={t.g500} fillOpacity=".22" stroke={t.g700} strokeWidth="2" strokeLinejoin="round" />
-        {pts.map(([x, y], j) => <circle key={j} cx={x} cy={y} r="3" fill={t.g700} />)}
+      <svg width="100%" viewBox="-34 -16 368 334" style={{ maxWidth: 400, justifySelf: 'center' }} aria-hidden>
+        {[1, 2, 3, 4, 5].map(k => <polygon key={k} points={axes.map((_, j) => at(j, k / 5).map(v => v.toFixed(1)).join(',')).join(' ')} fill={k % 2 ? 'none' : t.soft} stroke={t.grid} />)}
+        {axes.map((_, j) => { const [px, py] = at(j, 1); return <line key={j} x1={cx} y1={cy} x2={px} y2={py} stroke={t.grid} />; })}
+        <polygon points={pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')} fill={t.g500} fillOpacity=".22" stroke={t.g700} strokeWidth="2" strokeLinejoin="round" />
+        {pts.map(([px, py], j) => <circle key={j} cx={px} cy={py} r="3.2" fill={t.g700} />)}
         {axes.map((a, j) => {
-          const ang = -Math.PI / 2 + (j * 2 * Math.PI) / axes.length, lx = cx + Math.cos(ang) * (R + 16), ly = cy + Math.sin(ang) * (R + 16);
-          return <text key={j} x={lx} y={ly + 4} textAnchor={Math.abs(Math.cos(ang)) < 0.2 ? 'middle' : Math.cos(ang) > 0 ? 'start' : 'end'} fontSize="10.5" fill={t.muted}>{a.label}</text>;
+          const ang = -Math.PI / 2 + (j * 2 * Math.PI) / axes.length, lx = cx + Math.cos(ang) * (R + 12), ly = cy + Math.sin(ang) * (R + 12);
+          const side = Math.abs(Math.cos(ang)) >= 0.2;
+          const lines = [...nameLines(a.name), a.reading];
+          // Beside a side vertex (centred on it), above the top one and below the bottom one.
+          const first = side ? ly - ((lines.length - 1) * LINE) / 2 + 4 : Math.sin(ang) < 0 ? ly - (lines.length - 1) * LINE - 1 : ly + 11;
+          return (
+            <text key={j} textAnchor={!side ? 'middle' : Math.cos(ang) > 0 ? 'start' : 'end'} fontSize="13" fill={t.muted}>
+              {lines.map((line, i) => <tspan key={i} x={lx} y={first + i * LINE} {...(i === lines.length - 1 ? { fontWeight: 650, fill: t.fg } : {})}>{line}</tspan>)}
+            </text>
+          );
         })}
       </svg>
       <Foot t={t}>Each axis is the domain's score, from 0 to 2.</Foot>
