@@ -80,7 +80,7 @@ export function EntityScaleQualityCard() {
   const cards: Array<{ key: string; title: string; signal?: EntitySignal; span: number; fill?: boolean; body: React.ReactNode }> = [
     { key: 'health', title: 'Health', signal: s.health, span: wide, body: <HealthBody s={s.health} t={t} /> },
     { key: 'security', title: 'Security', signal: s.security, span: 1, body: <SecurityBody s={s.security} t={t} /> },
-    { key: 'compliance', title: 'Compliance', signal: compliance ?? s.compliance, span: wide, body: <ComplianceBody s={compliance ?? s.compliance} t={t} onRegime={switchRegime} /> },
+    { key: 'compliance', title: 'Compliance', signal: compliance ?? s.compliance, span: wide, body: <ComplianceBody s={compliance ?? s.compliance} t={t} scope={resolved.scope} onRegime={switchRegime} /> },
     { key: 'licenses', title: 'Licenses', signal: s.licenses, span: 1, fill: true, body: <LicensesBody s={s.licenses} t={t} /> },
     { key: 'coverage', title: 'Test coverage', signal: s.coverage, span: 1, fill: true, body: <CoverageBody s={s.coverage} t={t} /> },
     { key: 'engMaturity', title: 'Engineering maturity', signal: s.engMaturity, span: 1, body: <EngMaturityBody s={s.engMaturity} t={t} /> },

@@ -192,12 +192,16 @@ export function SecurityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
 
 // ─── Compliance ──────────────────────────────────────────────
 const CONTROL = [['MET', 'Met'], ['PARTIAL', 'Partial'], ['MISSING', 'Missing'], ['STALE', 'Stale'], ['ACCEPTED_WITH_EXCEPTION', 'With exception'], ['MANUAL', 'Manual']] as const;
-export function ComplianceBody({ s, t, onRegime }: { s?: EntitySignal; t: Tokens; onRegime: (id: string) => void }) {
+export function ComplianceBody({ s, t, scope, onRegime }: { s?: EntitySignal; t: Tokens; scope?: string; onRegime: (id: string) => void }) {
   const d = s?.data ?? {};
   const colors = [t.g700, t.g300, t.rose, t.amber, t.violet, t.faint];
   const counts = CONTROL.map(([k]) => d.summary?.[k] ?? 0);
   const total = counts.reduce((a, b) => a + b, 0);
   const regimes: Array<{ id: string; name: string }> = d.regimes ?? [];
+  // A business area or a repository: the controls kept per team come from the teams that own it, and the card says so.
+  const perTeam: { reading: string; teams: number; unassignedRepositories: number; controls: Array<{ id: string }> } | undefined = d.teamControls;
+  const perTeamIds = (perTeam?.controls ?? []).map(c => c.id).join(', ');
+  const repo = scope === 'repo';
   return (
     <>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -207,7 +211,7 @@ export function ComplianceBody({ s, t, onRegime }: { s?: EntitySignal; t: Tokens
         })}
         {regimes.length > 6 && <span style={{ fontSize: 12, color: t.muted }}>+{regimes.length - 6} regimes</span>}
       </div>
-      {!d.summary ? <Empty t={t}>No controls read for this regime yet.</Empty> : (
+      {!d.summary ? <Empty t={t}>{d.emptyReason === 'NO_REPOSITORIES' ? 'No repositories in this business area yet, so it has no controls of its own to read.' : 'No controls read for this regime yet.'}</Empty> : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
           <div style={{ position: 'relative', width: 118, height: 118, flex: 'none' }}>
             <Donut parts={counts} colors={colors} size={118} stroke={14} t={t} />
@@ -225,6 +229,13 @@ export function ComplianceBody({ s, t, onRegime }: { s?: EntitySignal; t: Tokens
             ))}
           </div>
         </div>
+      )}
+      {d.summary && perTeam && perTeam.controls.length > 0 && (
+        <p style={{ fontSize: 12, color: t.muted, margin: 0 }}>
+          {perTeam.reading === 'NO_TEAM'
+            ? `Read per team (${perTeamIds}): not applicable here, because ${repo ? 'this repository has no team' : 'none of these repositories has a team'}.`
+            : `Read per team (${perTeamIds}): from the ${perTeam.teams === 1 ? 'team that owns' : `${perTeam.teams} teams that own`} ${repo ? 'this repository' : 'these repositories'}.${perTeam.unassignedRepositories > 0 ? ` ${perTeam.unassignedRepositories === 1 ? '1 repository without a team is' : `${perTeam.unassignedRepositories} repositories without a team are`} not covered.` : ''}`}
+        </p>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '8px 10px', border: `1px solid ${t.border}`, borderRadius: 10, background: t.soft }}>
         <span>{d.dossier?.generatedAt ? `Audit dossier built ${new Date(d.dossier.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · SHA-256 manifest` : 'No audit dossier built yet'}</span>
@@ -463,7 +474,7 @@ export function EvolutionBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   return (
     <>
       <Kpi t={t} value={Math.round(series[series.length - 1].score)} unit="score now">{d.delta != null && <Delta t={t} v={d.delta} suffix={` since ${new Date(series[0].date).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}`} />}</Kpi>
-      <svg width="100%" viewBox={`0 0 ${w} ${h}`} aria-hidden>
+      <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }} aria-hidden>
         <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={t.g500} stopOpacity=".25" /><stop offset="1" stopColor={t.g500} stopOpacity="0" /></linearGradient></defs>
         {BANDS.filter(([a, b]) => b > lo && a < hi).map(([a, b, label], i) => {
           const top = y(Math.min(b, hi)), bottom = y(Math.max(a, lo));

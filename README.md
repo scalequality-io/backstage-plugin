@@ -86,12 +86,17 @@ measurement yet renders its empty state, never a fake value or a zero.
 | Test coverage (with its history) | all five | measured executed lines | `maturity:read` |
 | Evolution (score over 180 days, level bands) | all five | measurements kept | `maturity:read` |
 | Licenses (components by family, policy) | all five | license inventory + your policy | `evidence:read` |
-| Compliance (one regime's controls, audit dossier) | org, unit, team | controls engine | `evidence:read` |
+| Compliance (one regime's controls, audit dossier) | all five | controls engine | `evidence:read` |
 | AI (spend by source, people using AI, durability) | org, unit, team, area | provider readings + ScaleQuality AI | `durability:read` |
 | People and cost | org, unit, team, area | people × average salary | `business:read` |
 | Initiatives (planned, real, projected saving) | org, team, area | AI Portfolio | `business:read` |
 | Engineering maturity (L1 to L5, six domains) | org, unit, team | assessments | `maturity:read` |
 | Technology landscape | org, unit, team | configured radar | `catalog:read` |
+
+For a business area or a repository, Compliance reads the entity's own repositories. The
+controls that are kept per team come from the teams that own those repositories: the card
+names them, says how many repositories no team owns, and says they are not applicable when
+no team owns any. They are never counted as met.
 
 `business:read` is never part of a key's default read. People cost over headcount is a
 team's average salary, so create the key with **Share people cost and initiatives**
