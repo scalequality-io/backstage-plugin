@@ -28,6 +28,21 @@ let uid = 0;
 const useUid = () => React.useMemo(() => `sq${++uid}`, []);
 
 // ─── Frame ───────────────────────────────────────────────────
+/** The ScaleQuality symbol at card size: the contained variant (four rising bars, top bar white, in the Deep square). */
+function BrandMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden style={{ flex: 'none' }}>
+      <rect width="18" height="18" rx="4.5" fill="#0C2E26" />
+      <g transform="translate(3.9 4.2) scale(0.1375)">
+        <rect x="0" y="56" width="14" height="14" rx="1" fill="#9FE1CB" />
+        <rect x="20" y="40" width="14" height="30" rx="1" fill="#5DCAA5" />
+        <rect x="40" y="20" width="14" height="50" rx="1" fill="#1D9E75" />
+        <rect x="60" y="0" width="14" height="70" rx="1" fill="#FFFFFF" />
+      </g>
+    </svg>
+  );
+}
+
 export function Panel(props: { title: string; signal?: EntitySignal; t: Tokens; span?: number; children: React.ReactNode }) {
   const { title, signal, t, span = 1, children } = props;
   const p = signal?.provenance;
@@ -35,9 +50,7 @@ export function Panel(props: { title: string; signal?: EntitySignal; t: Tokens; 
   return (
     <div style={{ gridColumn: `span ${span}`, background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, color: t.fg }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px 0' }}>
-        <span aria-hidden style={{ width: 18, height: 18, borderRadius: 5, background: t.g700, display: 'grid', placeItems: 'end center', padding: 3, gap: 1, gridAutoFlow: 'column', flex: 'none' }}>
-          {[4, 7, 10].map(h => <i key={h} style={{ width: 2.5, height: h, background: '#fff', borderRadius: 1, display: 'block' }} />)}
-        </span>
+        <BrandMark />
         <span style={{ fontSize: 12, color: t.muted }}>ScaleQuality · <b style={{ color: t.fg, fontWeight: 600 }}>{title}</b></span>
         {p && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', padding: '2px 7px', borderRadius: 999, background: chip.bg, color: chip.fg }}>{p}</span>}
       </div>
