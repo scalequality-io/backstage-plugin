@@ -25,9 +25,11 @@ export const scaleQualityPlugin = createPlugin({
 });
 
 /**
- * Entity card showing the ScaleQuality signals (AI durability, engineering
- * maturity, code maturity, tech radar) for the entity's mapped scope.
- * Add it to your EntityPage; the scope is read from the entity annotations.
+ * Entity card showing the ScaleQuality widgets (health, security, compliance,
+ * licenses, coverage, engineering maturity, AI, people and cost, initiatives,
+ * evolution, technology landscape) for the entity's mapped org, business unit,
+ * team, business area or repository. Add it to your EntityPage; the scope is
+ * read from the entity annotations.
  */
 export const EntityScaleQualityCard = scaleQualityPlugin.provide(
   createComponentExtension({

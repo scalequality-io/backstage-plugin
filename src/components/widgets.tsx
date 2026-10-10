@@ -2,268 +2,442 @@ import React from 'react';
 import { EntitySignal } from '../api';
 
 /**
- * The rich ScaleQuality widgets, ported 1:1 from the platform's Developers
- * gallery so the card looks identical inside Backstage. Everything is inline
- * SVG + inline styles (no Tailwind, no external assets), theme-aware via the
- * `dark` flag so it stays impeccable in both Backstage light and dark themes.
+ * The ScaleQuality portal widgets, ported from the platform's Developers
+ * gallery so a card looks the same inside Backstage: one strong chart per
+ * card, brand greens, semantic colours only for risk. Inline SVG and inline
+ * styles only (no CSS framework, no external assets), theme-aware through the
+ * `dark` flag. A signal with no measurement renders its empty state, never a
+ * zero.
  */
 
-type Tokens = ReturnType<typeof tokens>;
+export type Tokens = ReturnType<typeof tokens>;
 
 export function tokens(dark: boolean) {
-  return {
-    grid: dark ? 'rgba(255,255,255,0.13)' : '#e4e4e7',
-    gridLabel: dark ? '#8c9099' : '#a1a1aa',
-    muted: dark ? '#9aa0a6' : '#6b7280',
-    text: dark ? '#e6e7ea' : '#27272a',
-    track: dark ? 'rgba(255,255,255,0.10)' : '#ececef',
-    panelBg: dark ? '#1e1f24' : '#ffffff',
-    border: dark ? 'rgba(255,255,255,0.10)' : '#e7e3d9',
-    headBg: dark ? 'rgba(255,255,255,0.03)' : '#faf9f7',
-    emerald: '#10b981',
-    emeraldText: dark ? '#34d399' : '#059669',
-    teal: '#14b8a6',
-    tealText: dark ? '#2dd4bf' : '#0d9488',
-    rose: 'rgba(251,113,133,0.85)',
-    badgeBg: 'rgba(16,185,129,0.15)',
-    badgeText: dark ? '#34d399' : '#047857',
-  };
+  return dark
+    ? { card: '#111416', fg: '#EEF1F2', muted: '#9AA3A9', faint: '#6C757B', soft: '#0D1012', border: 'rgba(238,241,242,0.08)', borderStrong: 'rgba(238,241,242,0.16)', grid: 'rgba(238,241,242,0.08)',
+        g900: '#9FE1CB', g700: '#2FB589', g500: '#1D9E75', g300: '#157A5C', g50: 'rgba(31,158,117,0.16)', ink: '#D5DADD', amber: '#E7B04A', amberBg: 'rgba(231,176,74,0.12)', rose: '#EF7A83', roseBg: 'rgba(239,122,131,0.12)', orange: '#F08A6E', blue: '#7FB0EA', violet: '#A795F0' }
+    : { card: '#FFFFFF', fg: '#0E0F10', muted: '#6B7379', faint: '#9AA2A8', soft: '#F8F9F9', border: 'rgba(15,17,19,0.08)', borderStrong: 'rgba(15,17,19,0.14)', grid: 'rgba(15,17,19,0.07)',
+        g900: '#0B4D3D', g700: '#0F6E56', g500: '#1D9E75', g300: '#5FC7A2', g50: '#E1F5EE', ink: '#2B3035', amber: '#C98A1A', amberBg: '#FFF4DF', rose: '#C2414B', roseBg: '#FDECEE', orange: '#E26D4E', blue: '#2F6FB8', violet: '#6E56CF' };
 }
 
-// ── geometry (exact from the gallery) ──
-const polar = (r: number, deg: number): [number, number] => [
-  120 + r * Math.cos((deg * Math.PI) / 180),
-  120 - r * Math.sin((deg * Math.PI) / 180),
-];
+const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
+const usd = (n: number) => (n > 0 && n < 0.01 ? '< $0.01' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: n >= 1000 ? 0 : 2 }).format(n));
+const money = (n: number, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: n >= 1000 ? 0 : 2 }).format(n);
+const band = (v: number, t: Tokens) => (v >= 80 ? t.g700 : v >= 60 ? t.g500 : v >= 40 ? t.amber : t.rose);
+let uid = 0;
+const useUid = () => React.useMemo(() => `sq${++uid}`, []);
 
-const RING_ORDER = ['ADOPT', 'TRIAL', 'ASSESS', 'HOLD'] as const;
-const RING_LABEL: Record<string, string> = { ADOPT: 'Adopt', TRIAL: 'Trial', ASSESS: 'Assess', HOLD: 'Hold' };
-const RING_DOT: Record<string, string> = { ADOPT: '#10b981', TRIAL: '#3b82f6', ASSESS: '#f59e0b', HOLD: '#ef4444' };
-const RING_BAND: Record<string, [number, number]> = { ADOPT: [17, 50], TRIAL: [54, 72], ASSESS: [76, 92], HOLD: [95, 106] };
-const QUAD_ORDER = ['QUALITY_FOUNDATIONS', 'AUTOMATION_CORE', 'RELIABILITY_SCALE', 'AI_ENGINEERING', 'OPS_SYNTHETIC', 'GOVERNANCE_PROCESS'] as const;
-const SECTOR_MID: Record<string, number> = { QUALITY_FOUNDATIONS: 90, AUTOMATION_CORE: 30, RELIABILITY_SCALE: 330, AI_ENGINEERING: 270, OPS_SYNTHETIC: 210, GOVERNANCE_PROCESS: 150 };
-const QUAD_SHORT: Record<string, string> = { QUALITY_FOUNDATIONS: 'Quality', AUTOMATION_CORE: 'Automation', RELIABILITY_SCALE: 'Reliability', AI_ENGINEERING: 'AI Eng', OPS_SYNTHETIC: 'Ops', GOVERNANCE_PROCESS: 'Governance' };
-const QUAD_FULL: Record<string, string> = { QUALITY_FOUNDATIONS: 'Quality Foundations', AUTOMATION_CORE: 'Automation Core', RELIABILITY_SCALE: 'Reliability & Scale', AI_ENGINEERING: 'AI Engineering', OPS_SYNTHETIC: 'Ops & Synthetic', GOVERNANCE_PROCESS: 'Governance & Process' };
-const QUAD_FILL: Record<string, string> = { QUALITY_FOUNDATIONS: '#3b82f6', AUTOMATION_CORE: '#a855f7', RELIABILITY_SCALE: '#f97316', AI_ENGINEERING: '#ec4899', OPS_SYNTHETIC: '#06b6d4', GOVERNANCE_PROCESS: '#94a3b8' };
-
-function radarBlips(tools: any[]): Array<{ x: number; y: number; color: string }> {
-  const blips: Array<{ x: number; y: number; color: string }> = [];
-  const half = 21;
-  for (const q of QUAD_ORDER) {
-    const mid = SECTOR_MID[q];
-    const color = QUAD_FILL[q];
-    for (const ring of RING_ORDER) {
-      const group = tools.filter(t => String(t?.quadrant) === q && String(t?.ring) === ring);
-      const k = group.length;
-      if (!k) continue;
-      const [lo, hi] = RING_BAND[ring] ?? [76, 92];
-      const pts: Array<[number, number]> = [];
-      let placed = 0;
-      let r = lo;
-      let arc = 0;
-      while (placed < k && r <= hi + 0.01) {
-        const arcLen = ((2 * half * Math.PI) / 180) * r;
-        const cap = Math.max(1, Math.floor(arcLen / 8.5));
-        const n = Math.min(cap, k - placed);
-        const phase = (arc % 2) * (half / Math.max(n, 2)) * 0.6;
-        for (let j = 0; j < n; j++) {
-          const ang = n === 1 ? mid : mid - half + (2 * half * j) / (n - 1);
-          pts.push([r, ang + phase]);
-        }
-        placed += n;
-        r += 7.0;
-        arc++;
-      }
-      const rem0 = k - placed;
-      for (let j = 0; placed < k; j++, placed++) {
-        pts.push([hi, mid - half + (2 * half * (j + 0.5)) / rem0]);
-      }
-      for (const [rr, ang] of pts) {
-        const [x, y] = polar(rr, ang);
-        blips.push({ x, y, color });
-      }
-    }
-  }
-  return blips;
-}
-
-// eng radar: six chosen axes, mapped from the assessment radar by name.
-const ENG_DOMAINS: Array<{ label: string; match: (n: string) => boolean }> = [
-  { label: 'Security', match: n => n.includes('security') },
-  { label: 'AI Quality', match: n => n.includes('llm') || n.startsWith('ai ') || n.includes('ai quality') || n.includes('ai &') },
-  { label: 'Process', match: n => n.includes('process') },
-  { label: 'Governance', match: n => n.includes('governance') },
-  { label: 'SRE', match: n => n.includes('reliability') || n === 'sre' },
-  { label: 'Unit Tests', match: n => n.includes('unit test') },
-];
-
-function engVals(radar: any[]): number[] {
-  return ENG_DOMAINS.map(({ match }) => {
-    const d = (radar ?? []).find((c: any) => match(String(c?.domainName ?? '').toLowerCase()));
-    return d ? Math.max(0.06, Math.min(1, (d.score ?? 0) / 2)) : 0.06;
-  });
-}
-
-function engPoints(v: number[]): string {
-  const cx = 110, cy = 86, R = 52, dx = 45, dy = 26;
-  const p: Array<[number, number]> = [
-    [cx, cy - R * v[0]],
-    [cx + dx * v[1], cy - dy * v[1]],
-    [cx + dx * v[2], cy + dy * v[2]],
-    [cx, cy + R * v[3]],
-    [cx - dx * v[4], cy + dy * v[4]],
-    [cx - dx * v[5], cy - dy * v[5]],
-  ];
-  return p.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-}
-
-const moneyK = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`);
-
-// ── shared panel frame ──
-export function Panel(props: { title: string; deepLink: string; t: Tokens; wide?: boolean; children: React.ReactNode }) {
-  const { t } = props;
+// ─── Frame ───────────────────────────────────────────────────
+export function Panel(props: { title: string; signal?: EntitySignal; t: Tokens; span?: number; children: React.ReactNode }) {
+  const { title, signal, t, span = 1, children } = props;
+  const p = signal?.provenance;
+  const chip = p === 'MEASURED' ? { bg: t.g50, fg: t.g900 } : p === 'DECLARED' ? { bg: t.amberBg, fg: t.amber } : { bg: 'rgba(47,111,184,0.12)', fg: t.blue };
   return (
-    <div
-      style={{
-        gridColumn: props.wide ? '1 / -1' : 'auto',
-        border: `1px solid ${t.border}`,
-        borderRadius: 12,
-        background: t.panelBg,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: `1px solid ${t.border}`, background: t.headBg }}>
-        <span style={{ font: '500 12px system-ui', color: t.muted }}>ScaleQuality · {props.title}</span>
-        <span style={{ font: '600 9px system-ui', letterSpacing: '0.08em', color: t.badgeText, background: t.badgeBg, padding: '2px 7px', borderRadius: 20 }}>MEASURED</span>
+    <div style={{ gridColumn: `span ${span}`, background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, color: t.fg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px 0' }}>
+        <span aria-hidden style={{ width: 18, height: 18, borderRadius: 5, background: t.g700, display: 'grid', placeItems: 'end center', padding: 3, gap: 1, gridAutoFlow: 'column', flex: 'none' }}>
+          {[4, 7, 10].map(h => <i key={h} style={{ width: 2.5, height: h, background: '#fff', borderRadius: 1, display: 'block' }} />)}
+        </span>
+        <span style={{ fontSize: 12, color: t.muted }}>ScaleQuality · <b style={{ color: t.fg, fontWeight: 600 }}>{title}</b></span>
+        {p && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', padding: '2px 7px', borderRadius: 999, background: chip.bg, color: chip.fg }}>{p}</span>}
       </div>
-      <div style={{ padding: 16, flex: 1 }}>{props.children}</div>
-      <a href={props.deepLink} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '9px 14px', borderTop: `1px solid ${t.border}`, textDecoration: 'none' }}>
-        <span style={{ font: '500 11px system-ui', color: t.emeraldText }}>Open in ScaleQuality ↗</span>
-      </a>
+      <div style={{ padding: '12px 14px 14px', flex: 1, display: 'grid', gap: 12, alignContent: 'start' }}>{children}</div>
+      {signal?.deepLinkUrl && (
+        <a href={signal.deepLinkUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '9px 14px', borderTop: `1px solid ${t.border}`, fontSize: 11.5, color: t.g700, textDecoration: 'none', fontWeight: 500 }}>
+          Open in ScaleQuality ↗
+        </a>
+      )}
     </div>
   );
 }
 
-export function EngRadarBody({ s, t }: { s: EntitySignal; t: Tokens }) {
-  const lvl = typeof s.value === 'number' ? s.value : null;
-  const vals = engVals(s.data?.radar);
-  const hexes = ['110,34 155,60 155,112 110,138 65,112 65,60', '110,60 132,73 132,99 110,112 88,99 88,73'];
-  const spokes: Array<[number, number]> = [[110, 34], [155, 60], [155, 112], [110, 138], [65, 112], [65, 60]];
-  const labels: Array<[number, number, 'start' | 'middle' | 'end', string]> = [
-    [110, 24, 'middle', 'Security'], [162, 58, 'start', 'AI Quality'], [162, 118, 'start', 'Process'],
-    [110, 156, 'middle', 'Governance'], [58, 118, 'end', 'SRE'], [58, 58, 'end', 'Unit Tests'],
-  ];
+const Empty = ({ t, children }: { t: Tokens; children: React.ReactNode }) => (
+  <div style={{ display: 'grid', placeItems: 'center', minHeight: 140, textAlign: 'center', fontSize: 12.5, color: t.muted, padding: 12 }}>{children}</div>
+);
+const Kpi = ({ t, value, unit, children }: { t: Tokens; value: React.ReactNode; unit: string; children?: React.ReactNode }) => (
+  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+    <span style={{ ...num, fontSize: 30, fontWeight: 650, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{value}</span>
+    <span style={{ fontSize: 13, color: t.muted }}>{unit}</span>{children}
+  </div>
+);
+const Delta = ({ t, v, suffix }: { t: Tokens; v: number; suffix?: string }) => (
+  <span style={{ fontSize: 12, fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: v >= 0 ? t.g50 : t.roseBg, color: v >= 0 ? t.g900 : t.rose }}>{v > 0 ? `+${v}` : v}{suffix ?? ''}</span>
+);
+const Legend = ({ t, items, column }: { t: Tokens; items: Array<{ label: string; value: React.ReactNode; color: string }>; column?: boolean }) => (
+  <div style={{ display: column ? 'grid' : 'flex', flexWrap: 'wrap', gap: column ? 4 : '6px 12px', fontSize: 11.5, color: t.muted }}>
+    {items.map(i => (
+      <span key={i.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <i style={{ width: 9, height: 9, borderRadius: 2, background: i.color, flex: 'none' }} />{i.label}
+        <b style={{ ...num, color: t.fg, fontWeight: 600, marginLeft: column ? 'auto' : 0 }}>{i.value}</b>
+      </span>
+    ))}
+  </div>
+);
+const Alert = ({ t, good, children }: { t: Tokens; good?: boolean; children: React.ReactNode }) => (
+  <div style={{ fontSize: 12, padding: '8px 10px', borderRadius: 10, background: good ? t.g50 : t.roseBg, color: good ? t.g900 : t.rose }}>{children}</div>
+);
+const Tri = ({ t, items }: { t: Tokens; items: Array<{ label: string; value: React.ReactNode }> }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+    {items.map(i => (
+      <div key={i.label} style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 12px', background: t.soft, display: 'grid', gap: 4, minWidth: 0 }}>
+        <span style={{ fontSize: 11, color: t.muted }}>{i.label}</span>
+        <span style={{ ...num, fontSize: 20, fontWeight: 650 }}>{i.value}</span>
+      </div>
+    ))}
+  </div>
+);
+const Foot = ({ t, children }: { t: Tokens; children: React.ReactNode }) => <p style={{ fontSize: 11, color: t.faint, margin: 0 }}>{children}</p>;
+
+// ─── Charts ──────────────────────────────────────────────────
+function Ring({ value, size, stroke, t }: { value: number | null; size: number; stroke: number; t: Tokens }) {
+  const id = useUid();
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, (value ?? 0) / 100));
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+      <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={t.g300} /><stop offset="1" stopColor={t.g700} /></linearGradient></defs>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={t.grid} strokeWidth={stroke} />
+      {value != null && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#${id})`} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${c * f} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />}
+    </svg>
+  );
+}
+function Donut({ parts, colors, size, stroke, t }: { parts: number[]; colors: string[]; size: number; stroke: number; t: Tokens }) {
+  const total = parts.reduce((a, b) => a + b, 0) || 1, r = (size - stroke) / 2, c = 2 * Math.PI * r;
+  const lengths = parts.map(p => (p / total) * c);
+  const offsets = lengths.map((_, i) => lengths.slice(0, i).reduce((a, b) => a + b, 0));
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={t.grid} strokeWidth={stroke} />
+      {parts.map((p, i) => <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={colors[i]} strokeWidth={stroke} strokeDasharray={`${Math.max(0, lengths[i] - (p ? 2 : 0))} ${c}`} strokeDashoffset={-offsets[i]} transform={`rotate(-90 ${size / 2} ${size / 2})`} />)}
+    </svg>
+  );
+}
+function Spark({ values, w, h, color }: { values: number[]; w: number; h: number; color: string }) {
+  const id = useUid();
+  if (values.length < 2) return null;
+  const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+  const pts = values.map((v, i) => [i * (w / (values.length - 1)), h - 3 - ((v - min) / span) * (h - 6)]);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  return (
+    <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ maxWidth: w, height: h }} aria-hidden>
+      <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".28" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
+      <path d={`${d} L${w} ${h} L0 ${h} Z`} fill={`url(#${id})`} />
+      <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={last[0]} cy={last[1]} r="2.6" fill={color} />
+    </svg>
+  );
+}
+
+// ─── Health ──────────────────────────────────────────────────
+const LEVEL_NAMES = ['', 'Reactive', 'Initial', 'Structured', 'Managed', 'Optimized'];
+const DOMAINS: Array<[string, string]> = [['security', 'Security'], ['reliability', 'Reliability'], ['maintainability', 'Maintainability'], ['aiDurability', 'AI durability'], ['supplyChain', 'Supply chain']];
+export function HealthBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  if (d.score == null) return <Empty t={t}>No repository measured here yet.</Empty>;
+  const rows: Array<{ label: string; value: number; pct?: boolean }> = DOMAINS.filter(([k]) => d.domains?.[k] != null).map(([k, label]) => ({ label, value: d.domains[k] }));
+  if (d.coveragePct != null) rows.push({ label: 'Test coverage', value: d.coveragePct, pct: true });
+  if (d.licensesAllowedPct != null) rows.push({ label: 'Licenses allowed', value: d.licensesAllowedPct, pct: true });
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, alignItems: 'center' }}>
+      <div style={{ position: 'relative', width: 170, height: 170, flex: 'none' }}>
+        <Ring value={d.score} size={170} stroke={15} t={t} />
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}><div>
+          <div style={{ ...num, fontSize: 42, fontWeight: 650, letterSpacing: '-0.03em', lineHeight: 1 }}>{d.score}</div>
+          <div style={{ fontSize: 11, color: t.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4 }}>of 100</div>
+          {d.level != null && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 600, color: t.g900, background: t.g50, padding: '2px 9px', borderRadius: 999 }}>L{d.level} · {LEVEL_NAMES[d.level]}</span>}
+        </div></div>
+      </div>
+      <div style={{ display: 'grid', gap: 9, flex: 1, minWidth: 220 }}>
+        {rows.map(r => (
+          <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '118px minmax(0, 1fr) 46px', gap: 10, alignItems: 'center', fontSize: 12.5 }}>
+            <span style={{ color: t.ink }}>{r.label}</span>
+            <span style={{ height: 8, borderRadius: 99, background: t.soft, border: `1px solid ${t.border}`, overflow: 'hidden', position: 'relative' }}>
+              <i style={{ position: 'absolute', inset: '0 auto 0 0', width: `${r.value}%`, borderRadius: 99, background: band(r.value, t) }} />
+              {[60, 80].map(x => <span key={x} style={{ position: 'absolute', top: -2, bottom: -2, left: `${x}%`, width: 1, background: t.borderStrong }} />)}
+            </span>
+            <span style={{ ...num, textAlign: 'right', fontWeight: 600 }}>{r.value}{r.pct ? '%' : ''}</span>
+          </div>
+        ))}
+        <p style={{ fontSize: 12, color: t.muted, margin: 0 }}>{d.delta30d != null && <><Delta t={t} v={d.delta30d} /> in 30 days · </>}ticks at 60 and 80</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Security ────────────────────────────────────────────────
+export function SecurityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  if (d.total == null) return <Empty t={t}>No security reading here yet.</Empty>;
+  const sev = [['Critical', d.open?.critical ?? 0, t.rose], ['High', d.open?.high ?? 0, t.orange], ['Medium', d.open?.medium ?? 0, t.amber], ['Low', d.open?.low ?? 0, t.faint]] as Array<[string, number, string]>;
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 }}>
-        <span style={{ font: '600 13px system-ui', color: t.text }}>Engineering maturity</span>
-        <span><span style={{ font: '700 24px system-ui', color: t.emeraldText, letterSpacing: '-0.02em' }}>{lvl == null ? '—' : `L${lvl}`}</span><span style={{ font: '400 12px system-ui', color: t.muted }}> of 5</span></span>
-      </div>
-      <svg viewBox="0 0 220 172" style={{ width: '100%', height: 168 }}>
-        {hexes.map((h, i) => <polygon key={i} points={h} fill="none" stroke={t.grid} strokeWidth="1" />)}
-        {spokes.map(([x, y], i) => <line key={i} x1="110" y1="86" x2={x} y2={y} stroke={t.grid} strokeWidth="1" />)}
-        {lvl != null && <polygon points={engPoints(vals)} fill={`${t.emerald}26`} stroke={t.emerald} strokeWidth="2" strokeLinejoin="round" />}
-        {labels.map(([x, y, a, txt], i) => <text key={i} x={x} y={y} textAnchor={a} fill={t.gridLabel} style={{ font: '600 9px system-ui' }}>{txt}</text>)}
-      </svg>
+      <Kpi t={t} value={d.total} unit="open findings">{d.partial && <span style={{ fontSize: 12, fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: t.roseBg, color: t.rose }}>at least: an inventory hit its limit</span>}</Kpi>
+      {d.total > 0 && <div style={{ display: 'flex', height: 14, borderRadius: 7, overflow: 'hidden', gap: 2 }}>{sev.map(([l, n, c]) => n ? <i key={l} style={{ flex: n, background: c }} /> : null)}</div>}
+      <Legend t={t} items={sev.map(([label, value, color]) => ({ label, value, color }))} />
+      {sev[0][1] > 0 ? <Alert t={t}>{sev[0][1]} critical {sev[0][1] === 1 ? 'finding' : 'findings'} open. The remediation agent can open the pull request.</Alert> : <Alert t={t} good>No critical finding open.</Alert>}
     </>
   );
 }
 
-export function CodeMaturityBody({ s, t }: { s: EntitySignal; t: Tokens }) {
-  const score = typeof s.value === 'number' ? s.value : null;
-  const dom = s.data?.domains ?? {};
-  const dash = score != null ? (score / 100) * 295.3 : 0;
-  const rows: Array<[string, string]> = [['Security', 'security'], ['Supply chain', 'supplyChain'], ['Reliability', 'reliability'], ['Maintainability', 'maintainability'], ['AI durability', 'aiDurability']];
+// ─── Compliance ──────────────────────────────────────────────
+const CONTROL = [['MET', 'Met'], ['PARTIAL', 'Partial'], ['MISSING', 'Missing'], ['STALE', 'Stale'], ['ACCEPTED_WITH_EXCEPTION', 'With exception'], ['MANUAL', 'Manual']] as const;
+export function ComplianceBody({ s, t, onRegime }: { s?: EntitySignal; t: Tokens; onRegime: (id: string) => void }) {
+  const d = s?.data ?? {};
+  const colors = [t.g700, t.g300, t.rose, t.amber, t.violet, t.faint];
+  const counts = CONTROL.map(([k]) => d.summary?.[k] ?? 0);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const regimes: Array<{ id: string; name: string }> = d.regimes ?? [];
   return (
     <>
-      <div style={{ font: '600 13px system-ui', color: t.text, marginBottom: 4 }}>Code maturity</div>
-      <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-        <svg viewBox="0 0 120 120" style={{ width: 120, height: 120, flexShrink: 0 }}>
-          <circle cx="60" cy="60" r="47" fill="none" stroke={t.track} strokeWidth="10" />
-          {score != null && <circle cx="60" cy="60" r="47" fill="none" stroke={t.teal} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash.toFixed(1)} 295.3`} transform="rotate(-90 60 60)" />}
-          <text x="60" y="55" textAnchor="middle" fill={t.tealText} style={{ font: '700 28px system-ui' }}>{score == null ? '—' : score}</text>
-          <text x="60" y="73" textAnchor="middle" fill={t.muted} style={{ font: '400 9px system-ui' }}>of 100</text>
-        </svg>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ font: '400 12px system-ui', color: t.muted, margin: '0 0 12px' }}>the zero-config Diagnosis verdict</p>
-          {rows.map(([label, key]) => {
-            const v = typeof dom[key] === 'number' ? dom[key] : null;
-            return (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, font: '400 11px system-ui', marginBottom: 6 }}>
-                <span style={{ width: 92, color: t.muted, flexShrink: 0 }}>{label}</span>
-                <span style={{ flex: 1, height: 4, borderRadius: 20, background: t.track, overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${v ?? 0}%`, background: `${t.teal}b3`, borderRadius: 20 }} /></span>
-                <span style={{ width: 22, textAlign: 'right', color: t.muted, fontVariantNumeric: 'tabular-nums' }}>{v ?? '—'}</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        {regimes.slice(0, 6).map(r => {
+          const on = d.regime?.id === r.id;
+          return <button key={r.id} type="button" onClick={() => onRegime(r.id)} style={{ font: 'inherit', fontSize: 11.5, padding: '3px 9px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${on ? 'transparent' : t.borderStrong}`, background: on ? t.g700 : 'transparent', color: on ? '#fff' : t.muted }}>{r.name}</button>;
+        })}
+        {regimes.length > 6 && <span style={{ fontSize: 12, color: t.muted }}>+{regimes.length - 6} regimes</span>}
+      </div>
+      {!d.summary ? <Empty t={t}>No controls read for this regime yet.</Empty> : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: 118, height: 118, flex: 'none' }}>
+            <Donut parts={counts} colors={colors} size={118} stroke={14} t={t} />
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}><div>
+              <div style={{ ...num, fontSize: 22, fontWeight: 650 }}>{counts[0]}/{total}</div><div style={{ fontSize: 10.5, color: t.muted }}>controls met</div>
+            </div></div>
+          </div>
+          <div style={{ display: 'grid', gap: 8, flex: 1, minWidth: 200 }}>
+            <Legend t={t} items={CONTROL.map(([, label], i) => ({ label, value: counts[i], color: colors[i] }))} />
+            {(d.open ?? []).length === 0 ? <span style={{ fontSize: 12, color: t.muted }}>Every control of this regime is met.</span> : (d.open ?? []).map((c: any) => (
+              <div key={c.id} style={{ display: 'grid', gap: 1, fontSize: 12.5, borderLeft: `2px solid ${c.status === 'MISSING' ? t.rose : t.amber}`, paddingLeft: 9 }}>
+                <span><b style={{ fontWeight: 600 }}>{c.id}</b> {c.title?.en}</span>
+                <span style={{ fontSize: 12, color: t.muted }}>{CONTROL.find(([k]) => k === c.status)?.[1] ?? c.status}{c.failingCount ? ` · ${c.failingCount} to fix` : ''}</span>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '8px 10px', border: `1px solid ${t.border}`, borderRadius: 10, background: t.soft }}>
+        <span>{d.dossier?.generatedAt ? `Audit dossier built ${new Date(d.dossier.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · SHA-256 manifest` : 'No audit dossier built yet'}</span>
+        {d.dossier?.generatedAt && <b style={{ color: t.g700, fontWeight: 600 }}>Evidence ready</b>}
       </div>
     </>
   );
 }
 
-export function DurabilityBody({ s, t }: { s: EntitySignal; t: Tokens }) {
-  const surv = typeof s.value === 'number' ? s.value : null;
-  const rew = surv == null ? 0 : 100 - surv;
-  const usd = typeof s.data?.reworkUsd === 'number' ? s.data.reworkUsd : null;
+// ─── Licenses ────────────────────────────────────────────────
+const FAMILIES: Array<[string, string]> = [['permissive', 'Permissive'], ['weakCopyleft', 'Weak copyleft'], ['strongCopyleft', 'Strong copyleft'], ['networkCopyleft', 'Network copyleft'], ['other', 'Other'], ['unknown', 'Unknown']];
+export function LicensesBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  if (d.components == null) return <Empty t={t}>No license inventory here yet.</Empty>;
+  const colors = [t.g500, t.blue, t.violet, t.rose, t.ink, t.faint];
+  const parts = FAMILIES.map(([k]) => d.families?.[k] ?? 0);
+  const forbidden = d.statuses?.forbidden ?? 0;
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ font: '600 13px system-ui', color: t.text }}>AI durability <span style={{ fontWeight: 400, color: t.muted }}>· how much AI code survives vs turns into rework</span></span>
-        <span style={{ font: '700 24px system-ui', color: t.emeraldText, fontVariantNumeric: 'tabular-nums' }}>{surv == null ? '—' : `${surv}%`}</span>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: 112, height: 112, flex: 'none' }}>
+          <Donut parts={parts} colors={colors} size={112} stroke={14} t={t} />
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}><div>
+            <div style={{ ...num, fontSize: 19, fontWeight: 650 }}>{d.components}</div><div style={{ fontSize: 10.5, color: t.muted }}>components</div>
+          </div></div>
+        </div>
+        <Legend t={t} column items={FAMILIES.map(([, label], i) => ({ label, value: parts[i], color: colors[i] })).filter((x, i) => x.value > 0 || i < 4)} />
       </div>
-      <div style={{ display: 'flex', height: 10, borderRadius: 20, overflow: 'hidden', marginTop: 14, background: t.track }}>
-        <div style={{ width: `${surv ?? 0}%`, background: t.emerald, borderRadius: '20px 0 0 20px' }} />
-        <div style={{ width: `${rew}%`, background: t.rose, borderRadius: '0 20px 20px 0' }} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', font: '400 11.5px system-ui', marginTop: 10 }}>
-        <span style={{ color: t.emeraldText, fontWeight: 500 }}>{surv == null ? '—' : `${surv}%`} survives <span style={{ color: t.muted, fontWeight: 400 }}>· vs 95% human code</span></span>
-        <span style={{ color: t.muted }}>{usd != null ? moneyK(usd) : '—'} rework you paid for</span>
-      </div>
+      {forbidden > 0 ? <Alert t={t}>{forbidden} {forbidden === 1 ? 'component uses a license' : 'components use licenses'} your policy forbids.</Alert> : <Alert t={t} good>Every component within your policy.</Alert>}
     </>
   );
 }
 
-export function TechRadarBody({ s, t }: { s: EntitySignal; t: Tokens }) {
-  const tools: any[] = Array.isArray(s.data?.tools) ? s.data.tools : [];
-  const count = typeof s.value === 'number' ? s.value : tools.length;
-  const guides = [108, 94, 74, 52];
+// ─── Coverage ────────────────────────────────────────────────
+export function CoverageBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  if (d.pct == null) return <Empty t={t}>No coverage measured here yet.</Empty>;
+  const history: Array<{ date: string; pct: number }> = d.history ?? [];
+  const delta = history.length > 1 ? Math.round(history[history.length - 1].pct - history[0].pct) : null;
   return (
-    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
-      <svg viewBox="-18 -14 276 268" style={{ width: 230, flexShrink: 0 }}>
-        <circle cx="120" cy="120" r="52" fill={`${t.emerald}0d`} />
-        {guides.map(r => <circle key={r} cx="120" cy="120" r={r} fill="none" stroke={t.grid} strokeWidth="1" />)}
-        {[0, 60, 120, 180, 240, 300].map(deg => { const [x, y] = polar(108, deg); return <line key={deg} x1="120" y1="120" x2={x.toFixed(1)} y2={y.toFixed(1)} stroke={t.grid} strokeWidth="1" opacity="0.5" />; })}
-        {QUAD_ORDER.map(q => { const [x, y] = polar(120, SECTOR_MID[q]); return <text key={q} x={x.toFixed(1)} y={(y + 3).toFixed(1)} textAnchor="middle" fill={t.gridLabel} style={{ font: '600 8.5px system-ui' }}>{QUAD_SHORT[q]}</text>; })}
-        {radarBlips(tools).map((b, i) => <circle key={i} cx={b.x.toFixed(1)} cy={b.y.toFixed(1)} r="2.8" fill={b.color} stroke={t.panelBg} strokeWidth="0.8" />)}
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      <div style={{ position: 'relative', width: 96, height: 96, flex: 'none' }}>
+        <Ring value={d.pct} size={96} stroke={10} t={t} />
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', ...num, fontSize: 20, fontWeight: 650 }}>{d.pct}%</div>
+      </div>
+      <div style={{ display: 'grid', gap: 4, minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 12, color: t.muted }}>Executed lines, last {history.length} measurements</span>
+        <Spark values={history.map(p => p.pct)} w={200} h={56} color={t.g500} />
+        {delta != null && <span style={{ fontSize: 12, color: t.muted }}><Delta t={t} v={delta} suffix=" pp" /> since {new Date(history[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Engineering maturity ────────────────────────────────────
+const ENG = [
+  { code: '13', label: 'Security', match: (n: string) => n.includes('security') },
+  { code: '12', label: 'AI quality', match: (n: string) => n.includes('llm') || n.startsWith('ai ') || n.includes('ai quality') || n.includes('ai &') },
+  { code: '09', label: 'Process', match: (n: string) => n.includes('process') },
+  { code: '10', label: 'Governance', match: (n: string) => n.includes('governance') },
+  { code: '11', label: 'SRE', match: (n: string) => n.includes('reliability') || n === 'sre' },
+  { code: '01', label: 'Unit tests', match: (n: string) => n.includes('unit test') },
+];
+const normCode = (v: unknown) => String(v ?? '').replace(/^0+/, '').toLowerCase();
+export function EngMaturityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  if (d.level == null || !(d.teamsAssessed > 0)) return <Empty t={t}>No team assessed yet.</Empty>;
+  const radar: any[] = d.radar ?? [];
+  const axes = ENG.map(dom => {
+    const hit = radar.find(r => normCode(r.domainCode) === normCode(dom.code) || dom.match(String(r.domainName ?? '').toLowerCase()));
+    const score = hit && hit.answer !== 'NA' ? Number(hit.score) : null;
+    return { label: `${dom.label} · ${score == null ? '–' : score.toFixed(1)}`, value: score == null ? 0 : score / 2 };
+  });
+  const size = 300, cx = size / 2, cy = size / 2, R = size / 2 - 40;
+  const at = (j: number, k: number) => { const a = -Math.PI / 2 + (j * 2 * Math.PI) / axes.length; return [cx + Math.cos(a) * R * k, cy + Math.sin(a) * R * k]; };
+  const pts = axes.map((a, j) => at(j, Math.max(0.04, Math.min(1, a.value))));
+  return (
+    <>
+      <Kpi t={t} value={`L${d.level}`} unit="of 5 · from the latest assessment of each team" />
+      <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size }} aria-hidden>
+        {[1, 2, 3, 4, 5].map(k => <polygon key={k} points={axes.map((_, j) => at(j, k / 5).map(x => x.toFixed(1)).join(',')).join(' ')} fill={k % 2 ? 'none' : t.soft} stroke={t.grid} />)}
+        {axes.map((_, j) => { const [x, y] = at(j, 1); return <line key={j} x1={cx} y1={cy} x2={x} y2={y} stroke={t.grid} />; })}
+        <polygon points={pts.map(p => p.map(x => x.toFixed(1)).join(',')).join(' ')} fill={t.g500} fillOpacity=".22" stroke={t.g700} strokeWidth="2" strokeLinejoin="round" />
+        {pts.map(([x, y], j) => <circle key={j} cx={x} cy={y} r="3" fill={t.g700} />)}
+        {axes.map((a, j) => {
+          const ang = -Math.PI / 2 + (j * 2 * Math.PI) / axes.length, lx = cx + Math.cos(ang) * (R + 16), ly = cy + Math.sin(ang) * (R + 16);
+          return <text key={j} x={lx} y={ly + 4} textAnchor={Math.abs(Math.cos(ang)) < 0.2 ? 'middle' : Math.cos(ang) > 0 ? 'start' : 'end'} fontSize="10.5" fill={t.muted}>{a.label}</text>;
+        })}
       </svg>
-      <div style={{ minWidth: 190, flex: 1 }}>
-        <div style={{ font: '600 13px system-ui', color: t.text }}>Technology landscape</div>
-        <div style={{ font: '400 12px system-ui', color: t.muted, margin: '2px 0 14px' }}>{count} technologies across the four rings</div>
-        <div style={{ font: '600 10px system-ui', letterSpacing: '0.05em', textTransform: 'uppercase', color: t.muted, opacity: 0.7, marginBottom: 6 }}>Rings</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 20px', marginBottom: 14 }}>
-          {RING_ORDER.map(ring => {
-            const n = tools.filter(tool => String(tool?.ring) === ring).length;
-            return (
-              <div key={ring} style={{ display: 'flex', alignItems: 'center', gap: 6, font: '400 11px system-ui' }}>
-                <span style={{ height: 8, width: 8, borderRadius: '50%', background: RING_DOT[ring] }} />
-                <span style={{ color: t.muted }}>{RING_LABEL[ring]}</span>
-                <span style={{ marginLeft: 'auto', fontWeight: 600, color: RING_DOT[ring], fontVariantNumeric: 'tabular-nums' }}>{n}</span>
-              </div>
-            );
-          })}
+      <Foot t={t}>Each axis is the domain's score, from 0 to 2.</Foot>
+    </>
+  );
+}
+
+// ─── AI ──────────────────────────────────────────────────────
+const SOURCE_NAMES: Record<string, string> = { SQ_AUTO: 'ScaleQuality AI', SQ_WORKSPACE: 'ScaleQuality AI', CURSOR: 'Cursor', CLAUDE_CODE: 'Claude Code', GITHUB_COPILOT: 'GitHub Copilot', OPENAI_API: 'OpenAI', LITELLM: 'LiteLLM', OPENROUTER: 'OpenRouter' };
+export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  const sources: Array<{ source: string; usd: number | null }> = d.bySource ?? [];
+  if (d.monthlyUsd == null && sources.length === 0) return <Empty t={t}>No AI usage measured here yet.</Empty>;
+  const palette = [t.ink, t.blue, t.violet, t.amber];
+  const color = (src: string, i: number) => (src === 'SQ_AUTO' || src === 'SQ_WORKSPACE' ? t.g500 : palette[i % 4]);
+  return (
+    <>
+      <Kpi t={t} value={usd(d.monthlyUsd ?? 0)} unit="this month" />
+      {sources.some(x => (x.usd ?? 0) > 0) && (
+        <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
+          {sources.map((x, i) => (x.usd ?? 0) > 0 ? <i key={x.source} style={{ flex: Math.max(x.usd!, (d.monthlyUsd ?? 0) * 0.02), background: color(x.source, i) }} /> : null)}
         </div>
-        <div style={{ font: '600 10px system-ui', letterSpacing: '0.05em', textTransform: 'uppercase', color: t.muted, opacity: 0.7, marginBottom: 6 }}>Categories</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 20px' }}>
-          {QUAD_ORDER.map(q => (
-            <div key={q} style={{ display: 'flex', alignItems: 'center', gap: 6, font: '400 11px system-ui', color: t.muted, minWidth: 0 }}>
-              <span style={{ height: 8, width: 8, borderRadius: '50%', flexShrink: 0, background: QUAD_FILL[q] }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{QUAD_FULL[q]}</span>
+      )}
+      <Legend t={t} items={sources.map((x, i) => ({ label: SOURCE_NAMES[x.source] ?? x.source, value: x.usd == null ? 'tokens only' : usd(x.usd), color: color(x.source, i) }))} />
+      <Tri t={t} items={[
+        { label: 'People using AI', value: d.people ? `${d.people.usingAi} of ${d.people.total}` : '–' },
+        { label: 'AI code that survives', value: d.durability?.survivalPct != null ? `${d.durability.survivalPct}%` : '–' },
+        { label: 'Rework paid', value: d.durability?.reworkUsd != null ? usd(d.durability.reworkUsd) : '–' },
+      ]} />
+      {d.partial && <Foot t={t}>A source reports tokens only: the month is a known subtotal.</Foot>}
+    </>
+  );
+}
+
+// ─── People and cost ─────────────────────────────────────────
+export function PeopleCostBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  if (d.hidden) return <Empty t={t}>Shown from 3 people up, so nobody's pay can be read from it.</Empty>;
+  if (d.monthlyCost == null) return <Empty t={t}>{d.people > 0 ? 'No average salary set yet.' : 'No people here yet.'}</Empty>;
+  return (
+    <>
+      <Kpi t={t} value={money(d.monthlyCost, d.currency)} unit="people cost / month" />
+      <Tri t={t} items={[
+        { label: 'People', value: d.people },
+        { label: 'AI per person', value: d.aiPerPersonUsd != null ? usd(d.aiPerPersonUsd) : '–' },
+        { label: 'AI vs people cost', value: d.aiShareOfPeopleCostPct != null ? `${d.aiShareOfPeopleCostPct < 0.1 ? '< 0.1' : d.aiShareOfPeopleCostPct}%` : '–' },
+      ]} />
+      <Foot t={t}>{d.peopleSource === 'DECLARED' ? 'Headcount declared for the area; bind people to it for the measured count.' : "People times the average salary of their team or area. An average, never one person's figure."}</Foot>
+    </>
+  );
+}
+
+// ─── Initiatives ─────────────────────────────────────────────
+export function InitiativesBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  const items: any[] = d.items ?? [];
+  if (items.length === 0) return <Empty t={t}>No initiative with people from here.</Empty>;
+  return (
+    <>
+      <Kpi t={t} value={usd(d.projectedSavingMonthlyUsd ?? 0)} unit="projected saving / month" />
+      <div style={{ display: 'grid', gap: 8 }}>
+        {items.slice(0, 5).map(x => {
+          const pct = x.plannedMonthlyUsd ? Math.min(100, (x.realMonthlyUsd / x.plannedMonthlyUsd) * 100) : 0;
+          return (
+            <div key={x.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '4px 10px', fontSize: 12.5 }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</span>
+              <span style={{ ...num, fontSize: 12, color: t.muted }}>{x.plannedMonthlyUsd != null ? `${usd(x.realMonthlyUsd)} real of ${usd(x.plannedMonthlyUsd)}` : `${usd(x.realMonthlyUsd)} real`}</span>
+              {x.plannedMonthlyUsd != null && <span style={{ gridColumn: '1 / -1', height: 6, borderRadius: 99, background: t.soft, border: `1px solid ${t.border}`, overflow: 'hidden', position: 'relative' }}><i style={{ position: 'absolute', inset: '0 auto 0 0', width: `${Math.max(pct, 1.5)}%`, borderRadius: 99, background: t.g500 }} /></span>}
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// ─── Evolution ───────────────────────────────────────────────
+const BANDS: Array<[number, number, string]> = [[0, 40, 'L1'], [40, 60, 'L2'], [60, 80, 'L3'], [80, 90, 'L4'], [90, 100, 'L5']];
+export function EvolutionBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const id = useUid();
+  const d = s?.data ?? {};
+  const series: Array<{ date: string; score: number }> = d.series ?? [];
+  if (series.length === 0) return <Empty t={t}>No measurement in the last 180 days.</Empty>;
+  const w = 380, h = 150, scores = series.map(p => p.score);
+  const lo = Math.max(0, Math.floor((Math.min(...scores) - 8) / 10) * 10), hi = Math.min(100, Math.ceil((Math.max(...scores) + 8) / 10) * 10);
+  const y = (v: number) => h - 18 - ((v - lo) / (hi - lo || 1)) * (h - 30);
+  const t0 = new Date(series[0].date).getTime(), t1 = new Date(series[series.length - 1].date).getTime();
+  const x = (date: string) => (t1 === t0 ? w / 2 : 40 + ((new Date(date).getTime() - t0) / (t1 - t0)) * (w - 44));
+  const pts = series.map(p => [x(p.date), y(p.score)]);
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  const months: Array<{ x: number; label: string }> = [];
+  for (const p of series) { const label = new Date(p.date).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }); if (!months.some(m => m.label === label)) months.push({ x: x(p.date), label }); }
+  return (
+    <>
+      <Kpi t={t} value={Math.round(series[series.length - 1].score)} unit="score now">{d.delta != null && <Delta t={t} v={d.delta} suffix={` since ${new Date(series[0].date).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}`} />}</Kpi>
+      <svg width="100%" viewBox={`0 0 ${w} ${h}`} aria-hidden>
+        <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={t.g500} stopOpacity=".25" /><stop offset="1" stopColor={t.g500} stopOpacity="0" /></linearGradient></defs>
+        {BANDS.filter(([a, b]) => b > lo && a < hi).map(([a, b, label], i) => {
+          const top = y(Math.min(b, hi)), bottom = y(Math.max(a, lo));
+          return <g key={label}><rect x="34" y={top} width={w - 34} height={bottom - top} fill={i % 2 ? t.soft : 'transparent'} /><text x="0" y={(top + bottom) / 2 + 4} fontSize="10" fill={t.faint}>{label}</text></g>;
+        })}
+        <path d={`${path} L${last[0]} ${h - 18} L${pts[0][0]} ${h - 18} Z`} fill={`url(#${id})`} />
+        <path d={path} fill="none" stroke={t.g700} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+        {pts.map(([px, py], i) => <circle key={i} cx={px} cy={py} r="2.4" fill={t.card} stroke={t.g700} strokeWidth="1.6" />)}
+        {months.map(m => <text key={m.label} x={m.x} y={h - 2} fontSize="10" fill={t.faint} textAnchor="middle">{m.label}</text>)}
+      </svg>
+    </>
+  );
+}
+
+// ─── Technology landscape ────────────────────────────────────
+export function TechRadarBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const stats = s?.data?.stats;
+  const counts = [stats?.adopt ?? 0, stats?.trial ?? 0, stats?.assess ?? 0, stats?.hold ?? 0];
+  const total = counts.reduce((a: number, b: number) => a + b, 0);
+  if (!stats || total === 0) return <Empty t={t}>No radar configured yet.</Empty>;
+  const size = 130, cx = size / 2, rings = [0.32, 0.55, 0.76, 0.96], colors = [t.g700, t.blue, t.amber, t.rose];
+  let seed = 7;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const dots: React.ReactNode[] = [];
+  counts.forEach((n, ri) => {
+    const inner = ri ? rings[ri - 1] : 0.06, outer = rings[ri];
+    for (let k = 0; k < n; k++) {
+      const a = rnd() * Math.PI * 2, rr = (inner + (outer - inner) * (0.15 + rnd() * 0.7)) * size / 2;
+      dots.push(<circle key={`${ri}-${k}`} cx={(cx + Math.cos(a) * rr).toFixed(1)} cy={(cx + Math.sin(a) * rr).toFixed(1)} r="2.6" fill={colors[ri]} fillOpacity=".85" />);
+    }
+  });
+  return (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden style={{ flex: 'none' }}>
+        {rings.slice().reverse().map((r, i) => <circle key={r} cx={cx} cy={cx} r={(r * size) / 2} fill={i % 2 ? t.soft : 'none'} stroke={t.grid} />)}
+        {dots}
+      </svg>
+      <div style={{ display: 'grid', gap: 6 }}>
+        <Kpi t={t} value={total} unit="technologies" />
+        <Legend t={t} column items={['Adopt', 'Trial', 'Assess', 'Hold'].map((label, i) => ({ label, value: counts[i], color: colors[i] }))} />
       </div>
     </div>
   );

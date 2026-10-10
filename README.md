@@ -1,9 +1,10 @@
 # @scalequality/backstage-plugin
 
-Render [ScaleQuality](https://scalequality.io)'s **measured** quality signals as an
-entity card in Backstage: AI durability, engineering maturity, code maturity and your
-tech radar, for the org, business unit or team the entity maps to. One click deep-links
-back into ScaleQuality for the full story.
+Render [ScaleQuality](https://scalequality.io)'s **measured** signals as entity cards in
+Backstage: health, security, compliance, licenses, test coverage, engineering maturity,
+AI, people and cost, initiatives, evolution and the technology landscape, for the org,
+business unit, team, business area or repository the entity maps to. Each card links back
+into ScaleQuality for the full story.
 
 The card reads ScaleQuality's public read-only `/v1` API through the Backstage backend
 **proxy**, so your org-scoped API key (`sq_live_...`) is injected server-side and never
@@ -58,28 +59,44 @@ import { EntityScaleQualityCard } from '@scalequality/backstage-plugin';
 ## 3. Map entities to a ScaleQuality scope
 
 Annotate the entity (Component / Group) with the ScaleQuality id it should show. Most
-specific wins (team > BU > org):
+specific wins (repository > team > business area > business unit > org):
 
 ```yaml
 metadata:
   annotations:
-    scalequality.io/team-id: <team-uuid>
+    scalequality.io/repo-id: <project-uuid>   # a repository, or one module of a monorepo
+    # or: scalequality.io/team-id: <team-uuid>
+    # or: scalequality.io/area-id: <business-area-uuid>
     # or: scalequality.io/bu-id: <bu-uuid>
     # or: scalequality.io/org-id: <org-uuid>
 ```
 
-Find the ids in ScaleQuality's `GET /v1/catalog`, or in the deep-link URLs.
+Find the ids in ScaleQuality's `GET /v1/catalog` (org, business units, teams, business
+areas and repositories), or in Developers › IDP, where each widget shows its endpoint.
 
 ## What it shows
 
-| Signal | Source | Provenance |
-|---|---|---|
-| AI durability (survival % + rework $) | git-attributed telemetry | MEASURED |
-| Engineering maturity (L1–L5) | assessment scorecards | MEASURED |
-| Code maturity (score /100 + sub-scores) | zero-config Diagnosis | MEASURED |
-| Tech radar (ring counts) | configured tech landscape | DECLARED |
+Each widget appears only where it applies and when your key carries it. A widget with no
+measurement yet renders its empty state, never a fake value or a zero.
 
-A signal with no measurement yet renders as `—`, never a fake value.
+| Widget | Where | Source | Key scope |
+|---|---|---|---|
+| Health (score, level, domains, coverage, licenses allowed) | all five | Diagnosis per repository | `maturity:read` |
+| Security (open findings by severity) | all five | latest measurement per repository | `maturity:read` |
+| Test coverage (with its history) | all five | measured executed lines | `maturity:read` |
+| Evolution (score over 180 days, level bands) | all five | measurements kept | `maturity:read` |
+| Licenses (components by family, policy) | all five | license inventory + your policy | `evidence:read` |
+| Compliance (one regime's controls, audit dossier) | org, unit, team | controls engine | `evidence:read` |
+| AI (spend by source, people using AI, durability) | org, unit, team, area | provider readings + ScaleQuality AI | `durability:read` |
+| People and cost | org, unit, team, area | people × average salary | `business:read` |
+| Initiatives (planned, real, projected saving) | org, team, area | AI Portfolio | `business:read` |
+| Engineering maturity (L1 to L5, six domains) | org, unit, team | assessments | `maturity:read` |
+| Technology landscape | org, unit, team | configured radar | `catalog:read` |
+
+`business:read` is never part of a key's default read. People cost over headcount is a
+team's average salary, so create the key with **Share people cost and initiatives**
+checked only if your portal should show it. People cost is hidden below three people.
+No widget shows one person's figure.
 
 ## License
 

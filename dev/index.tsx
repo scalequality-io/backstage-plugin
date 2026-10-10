@@ -14,10 +14,10 @@ import fixture from './fixture.json';
 
 /**
  * Standalone dev harness with no sign-in: `yarn start` renders the entity card
- * exactly as a real Backstage would, with real measured data from the Digital
- * Bank organization. Use the toggle to flip Backstage's light and dark themes.
- * The ScaleQuality API is mocked (returns the fixture) so no key or proxy is
- * needed to preview.
+ * exactly as a real Backstage would. The fixture follows the /v1 entity shape
+ * with illustrative numbers (from the approved prototype), not a live reading.
+ * Use the toggle to flip Backstage's light and dark themes. The ScaleQuality
+ * API is mocked, so no key or proxy is needed to preview.
  */
 
 const mockEntity = {
@@ -37,6 +37,9 @@ const mockApi: ScaleQualityApi = {
   async getEntity(): Promise<EntitySignals> {
     return fixture as unknown as EntitySignals;
   },
+  async getCompliance() {
+    return (fixture as unknown as EntitySignals).signals.compliance!;
+  },
 };
 
 function DevHarness() {
@@ -55,7 +58,7 @@ function DevHarness() {
         <Button variant="outlined" onClick={() => setDark(d => !d)} style={{ marginBottom: 20 }}>
           Switch to {dark ? 'light' : 'dark'} theme
         </Button>
-        <div style={{ maxWidth: 920 }}>
+        <div style={{ maxWidth: 1200 }}>
           <TestApiProvider apis={[[scaleQualityApiRef, mockApi]]}>
             <EntityProvider entity={mockEntity as any}>
               <EntityScaleQualityCard />
