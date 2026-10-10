@@ -99,6 +99,21 @@ const Tri = ({ t, items }: { t: Tokens; items: Array<{ label: string; value: Rea
     ))}
   </div>
 );
+/** One row per item: name on the left, an optional muted note, the figure on the right. `grow` shares the free height. */
+const Rows = ({ t, items, grow, wrap }: { t: Tokens; items: Array<{ label: string; value: React.ReactNode; color: string; note?: string | null }>; grow?: boolean; wrap?: boolean }) => (
+  <div style={{ display: 'grid', minWidth: 0, ...(grow ? { flex: 1, alignContent: 'center', gridAutoRows: 'minmax(30px, 54px)' } : {}) }}>
+    {items.map((i, n) => (
+      <div key={i.label} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 28, padding: wrap ? '5px 0' : 0, fontSize: 12.5, borderTop: n ? `1px solid ${t.border}` : 'none', minWidth: 0 }}>
+        <span style={{ flex: 1, minWidth: 0, display: 'inline-flex', alignItems: wrap ? 'flex-start' : 'center', gap: 7, color: t.ink }}>
+          <i style={{ width: 9, height: 9, borderRadius: 2, background: i.color, flex: 'none', marginTop: wrap ? 4 : 0 }} />
+          <span style={wrap ? { lineHeight: 1.3 } : { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.label}</span>
+        </span>
+        {i.note && <span style={{ ...num, fontSize: 11.5, color: t.muted }}>{i.note}</span>}
+        <b style={{ ...num, fontWeight: 600, whiteSpace: 'nowrap' }}>{i.value}</b>
+      </div>
+    ))}
+  </div>
+);
 const Foot = ({ t, children }: { t: Tokens; children: React.ReactNode }) => <p style={{ fontSize: 11, color: t.faint, margin: 0 }}>{children}</p>;
 
 // ─── Charts ──────────────────────────────────────────────────
@@ -228,18 +243,22 @@ export function LicensesBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const parts = FAMILIES.map(([k]) => d.families?.[k] ?? 0);
   const forbidden = d.statuses?.forbidden ?? 0;
   return (
-    <>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-        <div style={{ position: 'relative', width: 112, height: 112, flex: 'none' }}>
-          <Donut parts={parts} colors={colors} size={112} stroke={14} t={t} />
-          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}><div>
-            <div style={{ ...num, fontSize: 19, fontWeight: 650 }}>{d.components}</div><div style={{ fontSize: 10.5, color: t.muted }}>components</div>
-          </div></div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'grid', alignContent: 'center', minHeight: 0 }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: 144, height: 144, flex: 'none' }}>
+            <Donut parts={parts} colors={colors} size={144} stroke={16} t={t} />
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}><div>
+              <div style={{ ...num, fontSize: 26, fontWeight: 650, letterSpacing: '-0.02em' }}>{d.components}</div><div style={{ fontSize: 11, color: t.muted }}>components</div>
+            </div></div>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Rows t={t} wrap items={FAMILIES.map(([, label], i) => ({ label, value: parts[i], color: colors[i] })).filter((x, i) => x.value > 0 || i < 4)} />
+          </div>
         </div>
-        <Legend t={t} column items={FAMILIES.map(([, label], i) => ({ label, value: parts[i], color: colors[i] })).filter((x, i) => x.value > 0 || i < 4)} />
       </div>
       {forbidden > 0 ? <Alert t={t}>{forbidden} {forbidden === 1 ? 'component uses a license' : 'components use licenses'} your policy forbids.</Alert> : <Alert t={t} good>Every component within your policy.</Alert>}
-    </>
+    </div>
   );
 }
 
@@ -357,22 +376,28 @@ export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   if (d.monthlyUsd == null && sources.length === 0) return <Empty t={t}>No AI usage measured here yet.</Empty>;
   const palette = [t.ink, t.blue, t.violet, t.amber];
   const color = (src: string, i: number) => (src === 'SQ_AUTO' || src === 'SQ_WORKSPACE' ? t.g500 : palette[i % 4]);
+  const total = d.monthlyUsd ?? 0;
+  const share = (v: number | null) => {
+    if (v == null || total <= 0) return null;
+    const pct = (v / total) * 100;
+    return pct > 0 && pct < 1 ? '< 1%' : `${Math.round(pct)}%`;
+  };
   return (
-    <>
-      <Kpi t={t} value={usd(d.monthlyUsd ?? 0)} unit="this month" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+      <Kpi t={t} value={usd(total)} unit="this month" />
       {sources.some(x => (x.usd ?? 0) > 0) && (
         <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
-          {sources.map((x, i) => (x.usd ?? 0) > 0 ? <i key={x.source} style={{ flex: Math.max(x.usd!, (d.monthlyUsd ?? 0) * 0.02), background: color(x.source, i) }} /> : null)}
+          {sources.map((x, i) => (x.usd ?? 0) > 0 ? <i key={x.source} style={{ flex: Math.max(x.usd!, total * 0.02), background: color(x.source, i) }} /> : null)}
         </div>
       )}
-      <Legend t={t} items={sources.map((x, i) => ({ label: SOURCE_NAMES[x.source] ?? x.source, value: x.usd == null ? 'tokens only' : usd(x.usd), color: color(x.source, i) }))} />
+      <Rows t={t} grow items={sources.map((x, i) => ({ label: SOURCE_NAMES[x.source] ?? x.source, value: x.usd == null ? 'tokens only' : usd(x.usd), color: color(x.source, i), note: share(x.usd) }))} />
       <Tri t={t} items={[
         { label: 'People using AI', value: d.people ? `${d.people.usingAi} of ${d.people.total}` : '–' },
         { label: 'AI code that survives', value: d.durability?.survivalPct != null ? `${d.durability.survivalPct}%` : '–' },
         { label: 'Rework paid', value: d.durability?.reworkUsd != null ? usd(d.durability.reworkUsd) : '–' },
       ]} />
       {d.partial && <Foot t={t}>A source reports tokens only: the month is a known subtotal.</Foot>}
-    </>
+    </div>
   );
 }
 
