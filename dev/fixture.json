@@ -252,7 +252,8 @@
           "survivalPct": 73,
           "humanBaselinePct": 95,
           "reworkPct": 27,
-          "reworkUsd": 2
+          "reworkUsd": 2.01,
+          "codeSpendUsd": 7.46
         }
       }
     },

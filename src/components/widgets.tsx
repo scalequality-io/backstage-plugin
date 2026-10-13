@@ -407,6 +407,10 @@ export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
         { label: 'AI code that survives', value: d.durability?.survivalPct != null ? `${d.durability.survivalPct}%` : '–' },
         { label: 'Rework paid', value: d.durability?.reworkUsd != null ? usd(d.durability.reworkUsd) : '–' },
       ]} />
+      {/* The money is a share of the month's AI spend on code, a part of the month above: the card says so. */}
+      {d.durability?.reworkUsd != null && d.durability?.codeSpendUsd != null && (
+        <Foot t={t}>Rework paid is a share of the {usd(d.durability.codeSpendUsd)} of AI spend on code this month.</Foot>
+      )}
       {d.partial && <Foot t={t}>A source reports tokens only: the month is a known subtotal.</Foot>}
     </div>
   );

@@ -98,6 +98,10 @@ controls that are kept per team come from the teams that own those repositories:
 names them, says how many repositories no team owns, and says they are not applicable when
 no team owns any. They are never counted as met.
 
+In the AI widget, **Rework paid** is a share of the month's AI spend on code: the connected
+code tools and the code work done through ScaleQuality AI. It is a part of the month the
+widget shows, not the whole of it, and the card says the amount it is a share of.
+
 `business:read` is never part of a key's default read. People cost over headcount is a
 team's average salary, so create the key with **Share people cost and initiatives**
 checked only if your portal should show it. People cost is hidden below three people.
