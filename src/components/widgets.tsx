@@ -23,6 +23,13 @@ export function tokens(dark: boolean) {
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 const usd = (n: number) => (n > 0 && n < 0.01 ? '< $0.01' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: n >= 1000 ? 0 : 2 }).format(n));
 const money = (n: number, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: n >= 1000 ? 0 : 2 }).format(n);
+/**
+ * How a point of a trend is dated. A day ("2026-10-10") is a measured day. A full timestamp is one measurement of a
+ * series whose measurements all fell on one day, so it carries the hour, in the reader's own time.
+ */
+const trendDate = (date: string) => (date.length > 10
+  ? new Date(date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }));
 const band = (v: number, t: Tokens) => (v >= 80 ? t.g700 : v >= 60 ? t.g500 : v >= 40 ? t.amber : t.rose);
 let uid = 0;
 const useUid = () => React.useMemo(() => `sq${++uid}`, []);
@@ -280,12 +287,14 @@ export function CoverageBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   if (d.pct == null) return <Empty t={t}>No coverage measured here yet.</Empty>;
   const history: Array<{ date: string; pct: number }> = d.history ?? [];
   const delta = history.length > 1 ? Math.round(history[history.length - 1].pct - history[0].pct) : null;
-  const day = (date: string) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const day = trendDate;
+  const single = history.length === 1;
   const values = history.map(p => p.pct);
   const lo = values.length ? Math.max(0, Math.floor((Math.min(...values) - 5) / 10) * 10) : 0;
   const hi = values.length ? Math.min(100, Math.ceil((Math.max(...values) + 5) / 10) * 10) : 100;
   const t0 = history.length ? new Date(history[0].date).getTime() : 0, t1 = history.length ? new Date(history[history.length - 1].date).getTime() : 0;
-  const x = (date: string) => (t1 === t0 ? 50 : ((new Date(date).getTime() - t0) / (t1 - t0)) * 100);
+  // A single measurement sits at the right edge, where the next one will continue from.
+  const x = (date: string) => (t1 === t0 ? 100 : ((new Date(date).getTime() - t0) / (t1 - t0)) * 100);
   const y = (v: number) => 100 - ((v - lo) / (hi - lo || 1)) * 100;
   const path = history.map((p, i) => `${i ? 'L' : 'M'}${x(p.date).toFixed(2)} ${y(p.pct).toFixed(2)}`).join(' ');
   const last = history[history.length - 1];
@@ -298,11 +307,13 @@ export function CoverageBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', ...num, fontSize: 28, fontWeight: 650, letterSpacing: '-0.02em' }}>{d.pct}%</div>
         </div>
         <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-          <span style={{ fontSize: 12, color: t.muted }}>Executed lines, last {history.length} measurements</span>
+          <span style={{ fontSize: 12, color: t.muted }}>Executed lines, last {history.length} {history.length === 1 ? 'measurement' : 'measurements'}</span>
           {delta != null && <span style={{ fontSize: 12, color: t.muted }}><Delta t={t} v={delta} suffix=" pp" /> since {day(history[0].date)}</span>}
+          {/* One measurement is a point, not a trend: the card says so instead of leaving the chart empty. */}
+          {single && <span style={{ fontSize: 12, color: t.muted }}>First measurement on {day(history[0].date)}. The trend starts with the next one.</span>}
         </div>
       </div>
-      {history.length > 1 && (
+      {history.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr) auto', gap: '6px 8px', flex: 1, minHeight: 150 }} aria-hidden>
           <div style={{ ...small, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'right' }}>
             <span>{hi}%</span><span>{Math.round((hi + lo) / 2)}%</span><span>{lo}%</span>
@@ -311,13 +322,13 @@ export function CoverageBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
               <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={t.g500} stopOpacity=".28" /><stop offset="1" stopColor={t.g500} stopOpacity="0" /></linearGradient></defs>
               {[0, 50, 100].map(gy => <line key={gy} x1="0" x2="100" y1={gy} y2={gy} stroke={t.grid} vectorEffect="non-scaling-stroke" />)}
-              <path d={`${path} L${x(last.date).toFixed(2)} 100 L${x(history[0].date).toFixed(2)} 100 Z`} fill={`url(#${id})`} />
-              <path d={path} fill="none" stroke={t.g500} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              {!single && <path d={`${path} L${x(last.date).toFixed(2)} 100 L${x(history[0].date).toFixed(2)} 100 Z`} fill={`url(#${id})`} />}
+              {!single && <path d={path} fill="none" stroke={t.g500} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
             </svg>
             <span style={{ position: 'absolute', left: `${x(last.date)}%`, top: `${y(last.pct)}%`, width: 9, height: 9, borderRadius: '50%', background: t.g500, boxShadow: `0 0 0 2px ${t.card}`, transform: 'translate(-50%, -50%)' }} />
           </div>
           <span />
-          <div style={{ ...small, display: 'flex', justifyContent: 'space-between' }}><span>{day(history[0].date)}</span><span>{day(last.date)}</span></div>
+          <div style={{ ...small, display: 'flex', justifyContent: 'space-between' }}><span>{single ? '' : day(history[0].date)}</span><span>{day(last.date)}</span></div>
         </div>
       )}
     </div>
@@ -383,7 +394,9 @@ export function EngMaturityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
 const SOURCE_NAMES: Record<string, string> = { SQ_AUTO: 'ScaleQuality AI', SQ_WORKSPACE: 'ScaleQuality AI', CURSOR: 'Cursor', CLAUDE_CODE: 'Claude Code', GITHUB_COPILOT: 'GitHub Copilot', OPENAI_API: 'OpenAI', LITELLM: 'LiteLLM', OPENROUTER: 'OpenRouter' };
 export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const d = s?.data ?? {};
-  const sources: Array<{ source: string; usd: number | null }> = d.bySource ?? [];
+  // A tool the company only declared is listed, marked as such, and stays out of the month, the bar and the shares.
+  const sources: Array<{ source: string; usd: number | null; measured?: boolean }> = d.bySource ?? [];
+  const counted = (x: { measured?: boolean }) => x.measured !== false;
   if (d.monthlyUsd == null && sources.length === 0) return <Empty t={t}>No AI usage measured here yet.</Empty>;
   const palette = [t.ink, t.blue, t.violet, t.amber];
   const color = (src: string, i: number) => (src === 'SQ_AUTO' || src === 'SQ_WORKSPACE' ? t.g500 : palette[i % 4]);
@@ -396,12 +409,12 @@ export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
       <Kpi t={t} value={usd(total)} unit="this month" />
-      {sources.some(x => (x.usd ?? 0) > 0) && (
+      {sources.some(x => counted(x) && (x.usd ?? 0) > 0) && (
         <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
-          {sources.map((x, i) => (x.usd ?? 0) > 0 ? <i key={x.source} style={{ flex: Math.max(x.usd!, total * 0.02), background: color(x.source, i) }} /> : null)}
+          {sources.map((x, i) => counted(x) && (x.usd ?? 0) > 0 ? <i key={x.source} style={{ flex: Math.max(x.usd!, total * 0.02), background: color(x.source, i) }} /> : null)}
         </div>
       )}
-      <Rows t={t} grow items={sources.map((x, i) => ({ label: SOURCE_NAMES[x.source] ?? x.source, value: x.usd == null ? 'tokens only' : usd(x.usd), color: color(x.source, i), note: share(x.usd) }))} />
+      <Rows t={t} grow items={sources.map((x, i) => ({ label: SOURCE_NAMES[x.source] ?? x.source, value: x.usd == null ? 'tokens only' : usd(x.usd), color: color(x.source, i), note: counted(x) ? share(x.usd) : 'declared, not in the total' }))} />
       <Tri t={t} items={[
         { label: 'People using AI', value: d.people ? `${d.people.usingAi} of ${d.people.total}` : '–' },
         { label: 'AI code that survives', value: d.durability?.survivalPct != null ? `${d.durability.survivalPct}%` : '–' },
@@ -419,17 +432,27 @@ export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
 // ─── People and cost ─────────────────────────────────────────
 export function PeopleCostBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const d = s?.data ?? {};
-  if (d.hidden) return <Empty t={t}>Shown from 3 people up, so nobody's pay can be read from it.</Empty>;
-  if (d.monthlyCost == null) return <Empty t={t}>{d.people > 0 ? 'No average salary set yet.' : 'No people here yet.'}</Empty>;
+  if (!d.people) return <Empty t={t}>No people here yet.</Empty>;
+  const share: number | null = d.aiShareOfPeopleCostPct ?? null;
+  const pct = share == null ? null : share < 0.1 ? '< 0.1' : share.toLocaleString('en-US', { maximumFractionDigits: 1 });
   return (
     <>
-      <Kpi t={t} value={money(d.monthlyCost, d.currency)} unit="people cost / month" />
+      {/* What is measured leads: the AI each person accounts for. People cost follows, named as the company's own figure. */}
+      <Kpi t={t} value={d.aiPerPersonUsd != null ? usd(d.aiPerPersonUsd) : '–'} unit="AI per person this month" />
       <Tri t={t} items={[
         { label: 'People', value: d.people },
-        { label: 'AI per person', value: d.aiPerPersonUsd != null ? usd(d.aiPerPersonUsd) : '–' },
-        { label: 'AI vs people cost', value: d.aiShareOfPeopleCostPct != null ? `${d.aiShareOfPeopleCostPct < 0.1 ? '< 0.1' : d.aiShareOfPeopleCostPct}%` : '–' },
+        { label: 'Using AI', value: d.usingAi ?? '–' },
+        { label: 'People cost / month', value: d.monthlyCost != null ? money(d.monthlyCost, d.currency) : '–' },
       ]} />
-      <Foot t={t}>{d.peopleSource === 'DECLARED' ? 'Headcount declared for the area; bind people to it for the measured count.' : "People times the average salary of their team or area. An average, never one person's figure."}</Foot>
+      <Foot t={t}>
+        {/* Below three people only the people cost is withheld: it would tell what one person earns. */}
+        {d.hidden ? 'People cost shows from 3 people up, so nobody\'s pay can be read from it. Everything else here is measured.'
+          : d.monthlyCost == null ? 'No average salary set yet in team settings, so there is no people cost to compare.'
+            : pct != null ? `AI is ${pct}% of what these people cost. People cost uses the average salary your company set; everything else is measured.`
+              : 'People cost uses the average salary your company set; everything else is measured.'}
+        {d.peopleSource === 'DECLARED' ? ' Headcount declared in Build AI Intelligence; bind people to the area for the measured count.' : ''}
+        {d.partial ? ' Someone here has no average salary set, so the cost is a known subtotal.' : ''}
+      </Foot>
     </>
   );
 }
@@ -441,7 +464,8 @@ export function InitiativesBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   if (items.length === 0) return <Empty t={t}>No initiative with people from here.</Empty>;
   return (
     <>
-      <Kpi t={t} value={usd(d.projectedSavingMonthlyUsd ?? 0)} unit="projected saving / month" />
+      {/* The real cost measured this month leads; the saving is a projection and is named as one below. */}
+      <Kpi t={t} value={usd(d.realMonthlyUsd ?? items.reduce((sum, x) => sum + (x.realMonthlyUsd ?? 0), 0))} unit="real AI cost this month" />
       <div style={{ display: 'grid', gap: 8 }}>
         {items.slice(0, 5).map(x => {
           const pct = x.plannedMonthlyUsd ? Math.min(100, (x.realMonthlyUsd / x.plannedMonthlyUsd) * 100) : 0;
@@ -454,6 +478,7 @@ export function InitiativesBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
           );
         })}
       </div>
+      {(d.projectedSavingMonthlyUsd ?? 0) > 0 && <Foot t={t}>Projected saving: {usd(d.projectedSavingMonthlyUsd)} a month. A projection of the cost study, not a measurement.</Foot>}
     </>
   );
 }
