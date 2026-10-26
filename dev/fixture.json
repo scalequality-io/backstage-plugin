@@ -326,6 +326,368 @@
           "hold": 4
         }
       }
+    },
+    "peopleCost": {
+      "value": 18.7,
+      "unit": "usd",
+      "status": "ok",
+      "provenance": "MEASURED",
+      "deepLinkUrl": "https://app.scalequality.io/settings/team",
+      "data": {
+        "people": 6,
+        "peopleSource": "DIRECTORY",
+        "usingAi": 1,
+        "currency": "BRL",
+        "monthlyCost": 130000,
+        "partial": false,
+        "hidden": null,
+        "aiPerPersonUsd": 18.7,
+        "aiShareOfPeopleCostPct": 0.5,
+        "month": {
+          "days": [
+            "2026-10-01",
+            "2026-10-02",
+            "2026-10-03",
+            "2026-10-04",
+            "2026-10-05",
+            "2026-10-06",
+            "2026-10-07",
+            "2026-10-08",
+            "2026-10-09",
+            "2026-10-10",
+            "2026-10-11",
+            "2026-10-12",
+            "2026-10-13",
+            "2026-10-14",
+            "2026-10-15",
+            "2026-10-16",
+            "2026-10-17",
+            "2026-10-18",
+            "2026-10-19",
+            "2026-10-20",
+            "2026-10-21",
+            "2026-10-22",
+            "2026-10-23",
+            "2026-10-24",
+            "2026-10-25"
+          ],
+          "monthlyUsd": 112.19,
+          "partial": false,
+          "sources": [
+            {
+              "source": "CURSOR",
+              "usd": 87.81,
+              "inputTokens": 1500000,
+              "outputTokens": 489000,
+              "daily": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1.6,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                10.7,
+                25.6,
+                49.91,
+                0,
+                0,
+                0,
+                0
+              ],
+              "beyondUsd": 1.64
+            },
+            {
+              "source": "SQ_AUTO",
+              "usd": 24.38,
+              "inputTokens": 11200000,
+              "outputTokens": 811000,
+              "daily": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                4.99,
+                6.1,
+                4.2,
+                3.7,
+                5.39
+              ],
+              "beyondUsd": null
+            }
+          ],
+          "avgPerDayUsd": 4.49,
+          "topDay": {
+            "date": "2026-10-21",
+            "usd": 54.9
+          },
+          "tokens": {
+            "input": 12700000,
+            "output": 1300000
+          },
+          "costPer1MTokens": {
+            "usd": 8.01,
+            "left": []
+          },
+          "prs": {
+            "merged": 10,
+            "costPerPrUsd": 11.22
+          },
+          "groups": null
+        }
+      }
+    },
+    "bugs": {
+      "value": 14,
+      "unit": "count",
+      "status": "risk",
+      "provenance": "MEASURED",
+      "deepLinkUrl": "https://app.scalequality.io/home",
+      "data": {
+        "open": 14,
+        "critical": 3,
+        "byPriority": {
+          "critical": 1,
+          "high": 2,
+          "medium": 7,
+          "low": 4,
+          "none": 0
+        },
+        "byCategory": {
+          "BUG": 9,
+          "PRODUCTION_BUG": 3,
+          "INCIDENT": 1,
+          "HOTFIX": 1
+        },
+        "age": {
+          "upTo7": 5,
+          "upTo30": 6,
+          "over30": 3
+        },
+        "oldest": {
+          "key": "LIM-212",
+          "priority": "High",
+          "days": 41
+        },
+        "openedLast30": 11,
+        "resolvedLast30": 9,
+        "meanDaysToResolve": 4.6,
+        "daily": [
+          {
+            "date": "2026-09-26",
+            "open": 12,
+            "critical": 1
+          },
+          {
+            "date": "2026-09-27",
+            "open": 12,
+            "critical": 1
+          },
+          {
+            "date": "2026-09-28",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-09-29",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-09-30",
+            "open": 12,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-01",
+            "open": 12,
+            "critical": 1
+          },
+          {
+            "date": "2026-10-02",
+            "open": 11,
+            "critical": 1
+          },
+          {
+            "date": "2026-10-03",
+            "open": 11,
+            "critical": 1
+          },
+          {
+            "date": "2026-10-04",
+            "open": 12,
+            "critical": 1
+          },
+          {
+            "date": "2026-10-05",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-06",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-07",
+            "open": 14,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-08",
+            "open": 14,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-09",
+            "open": 13,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-10",
+            "open": 12,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-11",
+            "open": 12,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-12",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-13",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-14",
+            "open": 14,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-15",
+            "open": 15,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-16",
+            "open": 15,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-17",
+            "open": 14,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-18",
+            "open": 14,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-19",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-20",
+            "open": 13,
+            "critical": 2
+          },
+          {
+            "date": "2026-10-21",
+            "open": 14,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-22",
+            "open": 15,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-23",
+            "open": 15,
+            "critical": 4
+          },
+          {
+            "date": "2026-10-24",
+            "open": 14,
+            "critical": 3
+          },
+          {
+            "date": "2026-10-25",
+            "open": 14,
+            "critical": 3
+          }
+        ],
+        "deltaVs30d": 2,
+        "lastCapturedAt": "2026-10-25T12:00:00.000Z",
+        "byTeam": [
+          {
+            "teamId": "t-onb",
+            "name": "Onboarding",
+            "open": 5,
+            "critical": 1
+          },
+          {
+            "teamId": "t-back",
+            "name": "Backend",
+            "open": 4,
+            "critical": 1
+          },
+          {
+            "teamId": "t-lim",
+            "name": "Limits",
+            "open": 3,
+            "critical": 1
+          },
+          {
+            "teamId": "t-orch",
+            "name": "Orchestrator",
+            "open": 2,
+            "critical": 0
+          }
+        ],
+        "teams": {
+          "total": 6,
+          "withBoard": 4,
+          "withoutBoard": [
+            "Platform",
+            "Marte"
+          ]
+        }
+      }
     }
   }
 }

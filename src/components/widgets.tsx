@@ -15,9 +15,11 @@ export type Tokens = ReturnType<typeof tokens>;
 export function tokens(dark: boolean) {
   return dark
     ? { card: '#111416', fg: '#EEF1F2', muted: '#9AA3A9', faint: '#6C757B', soft: '#0D1012', border: 'rgba(238,241,242,0.08)', borderStrong: 'rgba(238,241,242,0.16)', grid: 'rgba(238,241,242,0.08)',
-        g900: '#9FE1CB', g700: '#2FB589', g500: '#1D9E75', g300: '#157A5C', g50: 'rgba(31,158,117,0.16)', ink: '#D5DADD', amber: '#E7B04A', amberBg: 'rgba(231,176,74,0.12)', rose: '#EF7A83', roseBg: 'rgba(239,122,131,0.12)', orange: '#F08A6E', blue: '#7FB0EA', violet: '#A795F0' }
+        g900: '#9FE1CB', g700: '#2FB589', g500: '#1D9E75', g300: '#157A5C', g50: 'rgba(31,158,117,0.16)', ink: '#D5DADD', amber: '#E7B04A', amberBg: 'rgba(231,176,74,0.12)', rose: '#EF7A83', roseBg: 'rgba(239,122,131,0.12)', orange: '#F08A6E', blue: '#7FB0EA', violet: '#A795F0',
+        cmuted: '#A3ACB2', roseInk: '#F29AA1', slate: '#7C868D', sInk: '#C3C9CD', sGreen: '#2FB589' }
     : { card: '#FFFFFF', fg: '#0E0F10', muted: '#6B7379', faint: '#9AA2A8', soft: '#F8F9F9', border: 'rgba(15,17,19,0.08)', borderStrong: 'rgba(15,17,19,0.14)', grid: 'rgba(15,17,19,0.07)',
-        g900: '#0B4D3D', g700: '#0F6E56', g500: '#1D9E75', g300: '#5FC7A2', g50: '#E1F5EE', ink: '#2B3035', amber: '#C98A1A', amberBg: '#FFF4DF', rose: '#C2414B', roseBg: '#FDECEE', orange: '#E26D4E', blue: '#2F6FB8', violet: '#6E56CF' };
+        g900: '#0B4D3D', g700: '#0F6E56', g500: '#1D9E75', g300: '#5FC7A2', g50: '#E1F5EE', ink: '#2B3035', amber: '#C98A1A', amberBg: '#FFF4DF', rose: '#C2414B', roseBg: '#FDECEE', orange: '#E26D4E', blue: '#2F6FB8', violet: '#6E56CF',
+        cmuted: '#5E666C', roseInk: '#A3313B', slate: '#8A949B', sInk: '#2B3035', sGreen: '#1D9E75' };
 }
 
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
@@ -205,6 +207,13 @@ export function ComplianceBody({ s, t, scope, onRegime }: { s?: EntitySignal; t:
   const counts = CONTROL.map(([k]) => d.summary?.[k] ?? 0);
   const total = counts.reduce((a, b) => a + b, 0);
   const regimes: Array<{ id: string; name: string }> = d.regimes ?? [];
+  // Six regimes at first, the rest one click away; the one being read is always among those shown.
+  const [allShown, setAllShown] = React.useState(false);
+  const current: string | undefined = d.regime?.id;
+  const firstSix = regimes.slice(0, 6);
+  const listed = allShown ? regimes : !current || firstSix.some(r => r.id === current) ? firstSix : [...firstSix, ...regimes.filter(r => r.id === current)];
+  const hidden = regimes.length - listed.length;
+  const more: React.CSSProperties = { font: 'inherit', fontSize: 11.5, fontWeight: 550, padding: '3px 4px', borderRadius: 999, cursor: 'pointer', border: '1px solid transparent', background: 'transparent', color: t.g700 };
   // A business area or a repository: the controls kept per team come from the teams that own it, and the card says so.
   const perTeam: { reading: string; teams: number; unassignedRepositories: number; controls: Array<{ id: string }> } | undefined = d.teamControls;
   const perTeamIds = (perTeam?.controls ?? []).map(c => c.id).join(', ');
@@ -212,11 +221,12 @@ export function ComplianceBody({ s, t, scope, onRegime }: { s?: EntitySignal; t:
   return (
     <>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-        {regimes.slice(0, 6).map(r => {
-          const on = d.regime?.id === r.id;
-          return <button key={r.id} type="button" onClick={() => onRegime(r.id)} style={{ font: 'inherit', fontSize: 11.5, padding: '3px 9px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${on ? 'transparent' : t.borderStrong}`, background: on ? t.g700 : 'transparent', color: on ? '#fff' : t.muted }}>{r.name}</button>;
+        {listed.map(r => {
+          const on = current === r.id;
+          return <button key={r.id} type="button" aria-pressed={on} onClick={() => onRegime(r.id)} style={{ font: 'inherit', fontSize: 11.5, padding: '3px 9px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${on ? 'transparent' : t.borderStrong}`, background: on ? t.g700 : 'transparent', color: on ? '#fff' : t.muted }}>{r.name}</button>;
         })}
-        {regimes.length > 6 && <span style={{ fontSize: 12, color: t.muted }}>+{regimes.length - 6} regimes</span>}
+        {hidden > 0 && <button type="button" aria-expanded={false} onClick={() => setAllShown(true)} style={more}>+{hidden} {hidden === 1 ? 'regime' : 'regimes'}</button>}
+        {allShown && regimes.length > 6 && <button type="button" aria-expanded onClick={() => setAllShown(false)} style={more}>Show fewer</button>}
       </div>
       {!d.summary ? <Empty t={t}>{d.emptyReason === 'NO_REPOSITORIES' ? 'No repositories in this business area yet, so it has no controls of its own to read.' : 'No controls read for this regime yet.'}</Empty> : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
@@ -391,7 +401,7 @@ export function EngMaturityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
 }
 
 // ─── AI ──────────────────────────────────────────────────────
-const SOURCE_NAMES: Record<string, string> = { SQ_AUTO: 'ScaleQuality AI', SQ_WORKSPACE: 'ScaleQuality AI', CURSOR: 'Cursor', CLAUDE_CODE: 'Claude Code', GITHUB_COPILOT: 'GitHub Copilot', OPENAI_API: 'OpenAI', LITELLM: 'LiteLLM', OPENROUTER: 'OpenRouter' };
+const SOURCE_NAMES: Record<string, string> = { SQ_AUTO: 'ScaleQuality AI', SQ_WORKSPACE: 'ScaleQuality AI', CURSOR: 'Cursor', CLAUDE_CODE: 'Claude Code', ANTHROPIC_API: 'Anthropic API', GITHUB_COPILOT: 'GitHub Copilot', OPENAI_API: 'OpenAI', LITELLM: 'LiteLLM', OPENROUTER: 'OpenRouter' };
 export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const d = s?.data ?? {};
   // A tool the company only declared is listed, marked as such, and stays out of the month, the bar and the shares.
@@ -430,9 +440,42 @@ export function AiBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
 }
 
 // ─── People and cost ─────────────────────────────────────────
+const niceMax = (v: number) => { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; };
+const usd2 = (n: number) => (n > 0 && n < 0.01 ? '< $0.01' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n));
+const usd0 = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+const signed = (n: number, digits = 0) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: digits })}`;
+const shortDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const longDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
+const Label = ({ t, children }: { t: Tokens; children: React.ReactNode }) => <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.cmuted }}>{children}</span>;
+const Tag = ({ t, bad, children }: { t: Tokens; bad?: boolean; children: React.ReactNode }) => (
+  <span style={{ fontSize: 11.5, fontWeight: 600, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: bad ? t.roseBg : t.g50, color: bad ? t.roseInk : t.g900 }}>{children}</span>
+);
+const Swatches = ({ t, items }: { t: Tokens; items: Array<{ label: string; color: string }> }) => (
+  <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11.5, color: t.cmuted }}>
+    {items.map(i => <span key={i.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: i.color, flex: 'none' }} />{i.label}</span>)}
+  </span>
+);
+/** Days as stacked columns, each segment a share of `top`: the people and cost chart, the bugs chart. */
+const DayColumns = ({ t, days, top, height }: { t: Tokens; days: Array<{ key: string; title: string; segs: Array<{ v: number; color: string }> }>; top: number; height: number }) => (
+  <div style={{ display: 'flex', alignItems: 'stretch', gap: 2, height, borderBottom: `1px solid ${t.borderStrong}` }}>
+    {days.map(day => (
+      <span key={day.key} title={day.title} style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column-reverse' }}>
+        {day.segs.filter(g => g.v > 0).map((g, i, all) => <i key={i} style={{ display: 'block', width: '100%', flex: 'none', height: `${(g.v / (top || 1)) * 100}%`, background: g.color, borderRadius: i === all.length - 1 ? '2px 2px 0 0' : 0 }} />)}
+      </span>
+    ))}
+  </div>
+);
+
+/**
+ * People and cost as the gallery's card shows it (approved prototypes JjYADJXQAyfm8neB7hGzsw and GT9vPVRrPWmcYdKcyxnPzp):
+ * the month's AI, what it is per person and who uses it, and the month day by day by source. A ScaleQuality that does
+ * not send the month yet (`data.month`) gets the card as it was.
+ */
 export function PeopleCostBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const d = s?.data ?? {};
   if (!d.people) return <Empty t={t}>No people here yet.</Empty>;
+  const m = d.month;
+  if (m?.days && m.monthlyUsd != null) return <PeopleCostMonth d={d} t={t} />;
   const share: number | null = d.aiShareOfPeopleCostPct ?? null;
   const pct = share == null ? null : share < 0.1 ? '< 0.1' : share.toLocaleString('en-US', { maximumFractionDigits: 1 });
   return (
@@ -453,6 +496,62 @@ export function PeopleCostBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
         {d.peopleSource === 'DECLARED' ? ' Headcount declared in Build AI Intelligence; bind people to the area for the measured count.' : ''}
         {d.partial ? ' Someone here has no average salary set, so the cost is a known subtotal.' : ''}
       </Foot>
+    </>
+  );
+}
+
+function PeopleCostMonth({ d, t }: { d: any; t: Tokens }) {
+  const m = d.month;
+  const days: string[] = m.days;
+  const sources: Array<{ source: string; usd: number | null; daily: number[] | null }> = m.sources ?? [];
+  const priced = sources.filter(x => x.usd != null);
+  const palette = [t.sInk, t.blue, t.violet, t.amber];
+  let k = 0;
+  const colorOf = new Map(sources.map(x => [x.source, x.source === 'SQ_AUTO' || x.source === 'SQ_WORKSPACE' ? t.sGreen : palette[k++ % palette.length]]));
+  const drawn = priced.filter(x => x.daily && x.daily.length === days.length);
+  const dayCents = days.map((_, i) => drawn.reduce((sum, x) => sum + Math.round((x.daily![i] ?? 0) * 100), 0));
+  const top = niceMax(Math.max(...dayCents, 1) / 100);
+  const last = days[days.length - 1];
+  const month = new Date(`${last}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  const total = m.monthlyUsd as number;
+  const small: React.CSSProperties = { ...num, fontSize: 10.5, color: t.cmuted };
+  return (
+    <>
+      <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ ...num, fontSize: 30, fontWeight: 650, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{usd2(total)}</span>
+          <span style={{ fontSize: 13, color: t.cmuted }}>AI this month · {month} {Number(days[0].slice(8))} to {Number(last.slice(8))}</span>
+        </div>
+        <p style={{ margin: 0, fontSize: 13, color: t.ink }}>
+          {d.aiPerPersonUsd != null && <><b style={{ ...num, fontWeight: 600 }}>{usd2(d.aiPerPersonUsd)}</b> per person</>}
+          {d.usingAi != null && <>{d.aiPerPersonUsd != null ? ' · ' : ''}{d.usingAi} of {d.people} {d.people === 1 ? 'person' : 'people'} using AI</>}
+        </p>
+        {total > 0 && priced.length > 0 && (
+          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', gap: 2 }} aria-hidden>
+            {priced.map(x => <i key={x.source} style={{ display: 'block', minWidth: 4, flex: Math.max(x.usd!, total * 0.02), background: colorOf.get(x.source) }} />)}
+          </div>
+        )}
+      </div>
+      {drawn.length > 0 && (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Label t={t}>By day</Label>
+            <Swatches t={t} items={drawn.map(x => ({ label: SOURCE_NAMES[x.source] ?? x.source, color: colorOf.get(x.source)! }))} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: 6 }}>
+            <div style={{ ...small, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', margin: '-6px 0' }} aria-hidden>
+              <span>{usd0(top)}</span><span>{usd0(top / 2)}</span><span>{usd0(0)}</span>
+            </div>
+            <DayColumns t={t} top={top} height={150} days={days.map((date, i) => ({ key: date, title: `${longDay(date)}: ${dayCents[i] ? usd2(dayCents[i] / 100) : 'no use'}`, segs: drawn.map(x => ({ v: x.daily![i] ?? 0, color: colorOf.get(x.source)! })) }))} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: 6 }}>
+            <span />
+            <div style={{ position: 'relative', height: 14, ...small }} aria-hidden>
+              {[1, 8, 15, 22].filter(n => n <= days.length).map(n => <span key={n} style={{ position: 'absolute', top: 0, left: `${((n - 0.5) / days.length) * 100}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>{month} {n}</span>)}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -546,5 +645,47 @@ export function TechRadarBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
         <Legend t={t} column items={['Adopt', 'Trial', 'Assess', 'Hold'].map((label, i) => ({ label, value: counts[i], color: colors[i] }))} />
       </div>
     </div>
+  );
+}
+
+// ─── Bugs and incidents ──────────────────────────────────────
+/**
+ * Bugs and incidents as the gallery's card shows it (approved prototype GT9vPVRrPWmcYdKcyxnPzp): what is open now on
+ * the teams' boards against 30 days ago, the critical or high ones by the production gate's rule, and the 30 days day
+ * by day. Read from the board snapshots ScaleQuality keeps every 6 h (Jira, Azure Boards); `open` null is no board
+ * connected here, or a reading that did not come, never zero bugs.
+ */
+export function BugsBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
+  const d = s?.data ?? {};
+  if (d.open == null) return <Empty t={t}>{d.teams ? "No team here has a board connected yet. Connect Jira or Azure Boards on the team's page." : "The boards' reading did not answer just now."}</Empty>;
+  const daily: Array<{ date: string; open: number; critical: number }> = d.daily ?? [];
+  const critical: number = d.critical ?? 0;
+  const delta: number | null = d.deltaVs30d ?? null;
+  const top = Math.max(1, ...daily.map(p => p.open)) + 2;
+  const axis = daily.length > 1 ? [0, 7, 14, 21, daily.length - 1].filter((i, n, all) => i < daily.length && all.indexOf(i) === n) : [];
+  return (
+    <>
+      <div style={{ display: 'grid', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ ...num, fontSize: 30, fontWeight: 650, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{d.open}</span>
+          <span style={{ fontSize: 13, color: t.cmuted }}>bugs and incidents open</span>
+          {delta != null && <Tag t={t} bad={delta > 0}>{signed(delta)} vs 30 days ago</Tag>}
+        </div>
+        <p style={{ margin: 0, fontSize: 12.5, color: t.ink }}>
+          <Tag t={t} bad={critical > 0}>{critical > 0 ? `${critical} critical or high` : 'none critical or high'}</Tag>{' '}
+          <span style={{ color: t.cmuted }}>the production gate passes at 0</span>
+        </p>
+      </div>
+      {daily.length > 0 && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Label t={t}>Open by day · 30 days</Label>
+            <Swatches t={t} items={[{ label: 'Critical and high', color: t.rose }, { label: 'Others', color: t.slate }]} />
+          </div>
+          <DayColumns t={t} top={top} height={150} days={daily.map(p => ({ key: p.date, title: `${longDay(p.date)}: ${p.open} open, ${p.critical} critical or high`, segs: [{ v: p.critical, color: t.rose }, { v: Math.max(0, p.open - p.critical), color: t.slate }] }))} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', ...num, fontSize: 10.5, color: t.cmuted }} aria-hidden>{axis.map(i => <span key={i}>{shortDay(daily[i].date)}</span>)}</div>
+        </div>
+      )}
+    </>
   );
 }

@@ -28,7 +28,7 @@ export interface EntitySignals {
   measuredAt: string;
   signals: Partial<Record<
     | 'health' | 'security' | 'compliance' | 'licenses' | 'coverage' | 'engMaturity'
-    | 'ai' | 'peopleCost' | 'initiatives' | 'evolution' | 'techRadar' | 'durability' | 'codeMaturity',
+    | 'ai' | 'peopleCost' | 'initiatives' | 'evolution' | 'techRadar' | 'durability' | 'codeMaturity' | 'bugs',
     EntitySignal
   >>;
 }

@@ -24,6 +24,7 @@ import {
   InitiativesBody,
   EvolutionBody,
   TechRadarBody,
+  BugsBody,
 } from './widgets';
 
 export const SCALEQUALITY_ORG_ANNOTATION = 'scalequality.io/org-id';
@@ -78,7 +79,8 @@ export function EntityScaleQualityCard() {
   };
   // Each widget only when the entity is read for it and the key carries it.
   const cards: Array<{ key: string; title: string; signal?: EntitySignal; span: number; fill?: boolean; body: React.ReactNode }> = [
-    { key: 'health', title: 'Health', signal: s.health, span: wide, body: <HealthBody s={s.health} t={t} /> },
+    // The product calls it code maturity (Erik, 25/10/2026): the five code domains, not the health of a team.
+    { key: 'health', title: 'Code maturity', signal: s.health, span: wide, body: <HealthBody s={s.health} t={t} /> },
     { key: 'security', title: 'Security', signal: s.security, span: 1, body: <SecurityBody s={s.security} t={t} /> },
     { key: 'compliance', title: 'Compliance', signal: compliance ?? s.compliance, span: wide, body: <ComplianceBody s={compliance ?? s.compliance} t={t} scope={resolved.scope} onRegime={switchRegime} /> },
     { key: 'licenses', title: 'Licenses', signal: s.licenses, span: 1, fill: true, body: <LicensesBody s={s.licenses} t={t} /> },
@@ -89,6 +91,8 @@ export function EntityScaleQualityCard() {
     { key: 'initiatives', title: 'Initiatives', signal: s.initiatives, span: 1, body: <InitiativesBody s={s.initiatives} t={t} /> },
     { key: 'evolution', title: 'Evolution', signal: s.evolution, span: 1, body: <EvolutionBody s={s.evolution} t={t} /> },
     { key: 'techRadar', title: 'Technology landscape', signal: s.techRadar, span: 1, body: <TechRadarBody s={s.techRadar} t={t} /> },
+    // A board is a team's (Jira or Azure Boards): an org, a business unit or a team, never a business area or a repository.
+    { key: 'bugs', title: 'Bugs and incidents', signal: s.bugs, span: wide, body: <BugsBody s={s.bugs} t={t} /> },
   ].filter(c => (s as Record<string, EntitySignal | undefined>)[c.key] !== undefined);
 
   return (

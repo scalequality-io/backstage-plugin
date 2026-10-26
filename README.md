@@ -1,8 +1,8 @@
 # @scalequality/backstage-plugin
 
 Render [ScaleQuality](https://scalequality.io)'s **measured** signals as entity cards in
-Backstage: health, security, compliance, licenses, test coverage, engineering maturity,
-AI, people and cost, initiatives, evolution and the technology landscape, for the org,
+Backstage: code maturity, security, compliance, licenses, test coverage, engineering maturity,
+AI, people and cost, initiatives, evolution, the technology landscape and bugs and incidents, for the org,
 business unit, team, business area or repository the entity maps to. Each card links back
 into ScaleQuality for the full story.
 
@@ -81,17 +81,18 @@ measurement yet renders its empty state, never a fake value or a zero.
 
 | Widget | Where | Source | Key scope |
 |---|---|---|---|
-| Health (score, level, domains, coverage, licenses allowed) | all five | Diagnosis per repository | `maturity:read` |
+| Code maturity (score, level, domains, coverage, licenses allowed) | all five | Diagnosis per repository | `maturity:read` |
 | Security (open findings by severity) | all five | latest measurement per repository | `maturity:read` |
 | Test coverage (with its history) | all five | measured executed lines | `maturity:read` |
 | Evolution (score over 180 days, level bands) | all five | measurements kept | `maturity:read` |
 | Licenses (components by family, policy) | all five | license inventory + your policy | `evidence:read` |
 | Compliance (one regime's controls, audit dossier) | all five | controls engine | `evidence:read` |
 | AI (spend by source, people using AI, durability) | org, unit, team, area | provider readings + ScaleQuality AI | `durability:read` |
-| People and cost | org, unit, team, area | people × average salary | `business:read` |
+| People and cost (the month day by day, per person, people using AI) | org, unit, team, area | provider readings + ScaleQuality AI, people × average salary | `business:read` |
 | Initiatives (planned, real, projected saving) | org, team, area | AI Portfolio | `business:read` |
 | Engineering maturity (L1 to L5, six domains) | org, unit, team | assessments | `maturity:read` |
 | Technology landscape | org, unit, team | configured radar | `catalog:read` |
+| Bugs and incidents (open now, critical or high, 30 days by day) | org, unit, team | the teams' Jira or Azure Boards, read every 6 h | `maturity:read` |
 
 For a business area or a repository, Compliance reads the entity's own repositories. The
 controls that are kept per team come from the teams that own those repositories: the card
