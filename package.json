@@ -1,6 +1,6 @@
 {
   "name": "@scalequality/backstage-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Render ScaleQuality's measured signals as entity cards in Backstage: code maturity, security, compliance, licenses, test coverage, engineering maturity, AI, people and cost, initiatives, evolution, the technology landscape and bugs and incidents, for an org, business unit, team, business area or repository.",
   "keywords": [
     "backstage",

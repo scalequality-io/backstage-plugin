@@ -90,7 +90,7 @@ measurement yet renders its empty state, never a fake value or a zero.
 | AI (spend by source, people using AI, durability) | org, unit, team, area | provider readings + ScaleQuality AI | `durability:read` |
 | People and cost (the month day by day, per person, people using AI) | org, unit, team, area | provider readings + ScaleQuality AI, people × average salary | `business:read` |
 | Initiatives (planned, real, projected saving) | org, team, area | AI Portfolio | `business:read` |
-| Engineering maturity (L1 to L5, six domains) | org, unit, team | assessments | `maturity:read` |
+| Engineering maturity (L1 to L5, six domains, adjusted by evidence) | org, unit, team | assessments + measured evidence | `maturity:read` |
 | Technology landscape | org, unit, team | configured radar | `catalog:read` |
 | Bugs and incidents (open now, critical or high, 30 days by day) | org, unit, team | the teams' Jira or Azure Boards, read every 6 h | `maturity:read` |
 
@@ -102,6 +102,11 @@ no team owns any. They are never counted as met.
 In the AI widget, **Rework paid** is a share of the month's AI spend on code: the connected
 code tools and the code work done through ScaleQuality AI. It is a part of the month the
 widget shows, not the whole of it, and the card says the amount it is a share of.
+
+Engineering maturity reads each team's latest assessment at the level the measured evidence
+leaves it, as the team page in ScaleQuality does. When the evidence moved a team, the card says
+so: for a team, the level its assessment declared; for a unit or the organization, how many
+teams were moved and what was declared on average.
 
 `business:read` is never part of a key's default read. People cost over headcount is a
 team's average salary, so create the key with **Share people cost and initiatives**
