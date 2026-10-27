@@ -16,10 +16,10 @@ export function tokens(dark: boolean) {
   return dark
     ? { card: '#111416', fg: '#EEF1F2', muted: '#9AA3A9', faint: '#6C757B', soft: '#0D1012', border: 'rgba(238,241,242,0.08)', borderStrong: 'rgba(238,241,242,0.16)', grid: 'rgba(238,241,242,0.08)',
         g900: '#9FE1CB', g700: '#2FB589', g500: '#1D9E75', g300: '#157A5C', g50: 'rgba(31,158,117,0.16)', ink: '#D5DADD', amber: '#E7B04A', amberBg: 'rgba(231,176,74,0.12)', rose: '#EF7A83', roseBg: 'rgba(239,122,131,0.12)', orange: '#F08A6E', blue: '#7FB0EA', violet: '#A795F0',
-        cmuted: '#A3ACB2', roseInk: '#F29AA1', slate: '#7C868D', sInk: '#C3C9CD', sGreen: '#2FB589' }
+        cmuted: '#A3ACB2', camber: '#E7B04A', roseInk: '#F29AA1', slate: '#7C868D', sInk: '#C3C9CD', sGreen: '#2FB589' }
     : { card: '#FFFFFF', fg: '#0E0F10', muted: '#6B7379', faint: '#9AA2A8', soft: '#F8F9F9', border: 'rgba(15,17,19,0.08)', borderStrong: 'rgba(15,17,19,0.14)', grid: 'rgba(15,17,19,0.07)',
         g900: '#0B4D3D', g700: '#0F6E56', g500: '#1D9E75', g300: '#5FC7A2', g50: '#E1F5EE', ink: '#2B3035', amber: '#C98A1A', amberBg: '#FFF4DF', rose: '#C2414B', roseBg: '#FDECEE', orange: '#E26D4E', blue: '#2F6FB8', violet: '#6E56CF',
-        cmuted: '#5E666C', roseInk: '#A3313B', slate: '#8A949B', sInk: '#2B3035', sGreen: '#1D9E75' };
+        cmuted: '#5E666C', camber: '#8A5A00', roseInk: '#A3313B', slate: '#8A949B', sInk: '#2B3035', sGreen: '#1D9E75' };
 }
 
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
@@ -374,9 +374,20 @@ export function EngMaturityBody({ s, t }: { s?: EntitySignal; t: Tokens }) {
   const cx = 150, cy = 150, R = 112, LINE = 14.5;
   const at = (j: number, k: number) => { const a = -Math.PI / 2 + (j * 2 * Math.PI) / axes.length; return [cx + Math.cos(a) * R * k, cy + Math.sin(a) * R * k]; };
   const pts = axes.map((a, j) => at(j, Math.max(0.04, Math.min(1, a.value))));
+  // The level is what the evidence leaves of each team's assessment, as on the team page; when it moved one, the card
+  // says what was declared (a team) or how many teams it moved (a unit, the company).
+  const adjusted = d.adjustedTeams > 0 && d.declaredLevel != null;
+  const adjustedText = !adjusted ? null : d.teamsAssessed === 1
+    ? `Adjusted to L${d.level} by evidence. The latest assessment declared L${d.declaredLevel}.`
+    : `${d.adjustedTeams} of ${d.teamsAssessed} teams adjusted by evidence; what was declared averages L${d.declaredLevel}.`;
   return (
     <>
       <Kpi t={t} value={`L${d.level}`} unit="of 5 · from the latest assessment of each team" />
+      {adjustedText && (
+        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: t.ink, textWrap: 'pretty' }}>
+          <span style={{ fontSize: 11.5, fontWeight: 600, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: t.amberBg, color: t.camber }}>adjusted by evidence</span> {adjustedText}
+        </p>
+      )}
       <svg width="100%" viewBox="-34 -16 368 334" style={{ maxWidth: 400, justifySelf: 'center' }} aria-hidden>
         {[1, 2, 3, 4, 5].map(k => <polygon key={k} points={axes.map((_, j) => at(j, k / 5).map(v => v.toFixed(1)).join(',')).join(' ')} fill={k % 2 ? 'none' : t.soft} stroke={t.grid} />)}
         {axes.map((_, j) => { const [px, py] = at(j, 1); return <line key={j} x1={cx} y1={cy} x2={px} y2={py} stroke={t.grid} />; })}
